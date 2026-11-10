@@ -140,7 +140,7 @@ ENGINE_URL = (os.environ.get("LIVER_ENGINE") or "").rstrip("/")
 # รหัสผ่านสำหรับแก้/ลบข้อมูล (ถ้าตั้งไว้ หน้าเว็บจะต้องกรอก)
 SECRET = os.environ.get("LIVER_SECRET") or ""
 
-BUILD_TAG = "2026-11-11-cloud3"
+BUILD_TAG = "2026-11-11-cloud4"
 
 try:
     import db as store
@@ -510,7 +510,16 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/predict":
                 if ENGINE_URL:
                     return self._json(predict_remote(raw))
-                return self._json(predict_local(raw))
+                if LIB_OK and os.path.isfile(MODEL_PATH):
+                    return self._json(predict_local(raw))
+
+                raise RuntimeError(
+                    "ยังไม่ได้เชื่อมเครื่องประมวลผล — เว็บนี้ทำงานแบบฐานข้อมูลกลาง "
+                    "ภาพจะถูกประเมินโดยเครื่องที่รัน start.bat (LIVER_ENGINE). "
+                    "ขั้นตอน: 1) เปิด start.bat บนเครื่องที่มี liverV1.pt + torch "
+                    "2) รัน cloud_engine.bat เพื่อเปิดท่อส่งภาพจากเครื่องขึ้นคลาวด์ "
+                    "3) ตั้งค่า LIVER_ENGINE บน Render ให้เป็น URL ที่ได้"
+                    + (" (%s)" % LIB_NOTE if not LIB_OK else ""))
 
             if not self._authorized():
                 return self._json({"ok": False, "error": "ต้องใส่รหัสผ่าน (LIVER_SECRET) ก่อนแก้/ลบข้อมูล",
@@ -564,6 +573,106 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": False, "error": str(e)}, 500)
 
 
+def _serve_cloud_dir(port):
+    """เปิดโฟลเดอร์โปรเจกต์นี้ (มุมมองจากเครื่องในศูนย์) ให้คลาวด์เรียกผ่านท่อได้
+
+    รับเฉพาะ path ที่อยู่ในรายการขาว: /predict /health /save /delete /engine-health
+    เพื่อไม่ให้เครื่องในศูนย์เปิดเผยไฟล์ทั้งหมด (เช่น .env, liverV1.pt) ออกอินเทอร์เน็ต
+    """
+    allowed = {"/predict", "/health", "/save", "/delete", "/engine-health", "/exports"}
+    state = {"model": None, "error": None}
+
+    def predict_local_bytes(img_bytes):
+        if state["model"] is None:
+            from ultralytics import YOLO
+            state["model"] = YOLO(os.path.join(BASE, "liverV1.pt"))
+        import app as local_engine          # ใช้ตัวประมวลผลชุดเดียวกับ app.py
+        local_engine.MODEL = state["model"]
+        return local_engine.predict_image(img_bytes)
+
+    def save_bytes(payload):
+        return save_report(payload)
+
+    def delete_names(payload):
+        return delete_files(payload.get("name"))
+
+    def health():
+        return {
+            "ok": True, "mode": "engine", "build": BUILD_TAG,
+            "host": os.uname().nodename if hasattr(os, "uname") else os.environ.get("COMPUTERNAME", ""),
+            "lib_ok": LIB_OK, "lib_note": LIB_NOTE,
+            "model_file": os.path.isfile(os.path.join(BASE, "liverV1.pt")),
+            "model_loaded": state["model"] is not None,
+            "engine_ready": bool(LIB_OK and os.path.isfile(os.path.join(BASE, "liverV1.pt"))),
+            "port": port,
+        }
+
+    class Bridge(BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            say("[engine]", fmt % args)
+
+        def _json(self, obj, code=200):
+            body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_OPTIONS(self):
+            self.send_response(204)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def do_GET(self):
+            p = urlparse(self.path).path
+            if p in ("/health", "/engine-health"):
+                return self._json(health())
+            if p == "/":
+                return self._json({"ok": True, "service": "liver engine bridge",
+                                   "endpoints": sorted(allowed)})
+            return self._json({"ok": False, "error": "not allowed"}, 403)
+
+        def do_POST(self):
+            p = urlparse(self.path).path
+            if p not in allowed:
+                return self._json({"ok": False, "error": "not allowed"}, 403)
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                raw = self.rfile.read(n) if n > 0 else b""
+                if p == "/predict":
+                    if not raw:
+                        return self._json({"ok": False, "error": "no image"}, 400)
+                    return self._json(predict_local_bytes(raw))
+                if p == "/save":
+                    return self._json(save_bytes(json.loads(raw.decode("utf-8"))))
+                if p == "/delete":
+                    return self._json(delete_names(json.loads(raw.decode("utf-8"))))
+                return self._json({"ok": True})
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return self._json({"ok": False, "error": "%s: %s" % (type(e).__name__, e)}, 500)
+
+    srv = ThreadingHTTPServer(("0.0.0.0", port), Bridge)
+    srv.daemon_threads = True
+    say("[engine] ท่อส่งภาพพร้อม: http://0.0.0.0:%d  (ให้คลาวด์เรียกผ่าน URL สาธารณะ)" % port)
+    h = health()
+    say("[engine] lib_ok=%s model_file=%s" % (h["lib_ok"], h["model_file"]))
+    if not h["engine_ready"]:
+        say("[engine] ยังประเมินไม่ได้:", LIB_NOTE)
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.server_close()
+
+
 class Server(ThreadingHTTPServer):
     allow_reuse_address = True     # บนคลาวด์ตัวจัดการพอร์ตให้แล้ว
     daemon_threads = True
@@ -595,4 +704,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    _mode = (os.environ.get("LIVER_MODE") or "").strip().lower()
+    if "--engine" in sys.argv or _mode == "engine":
+        _ep = int(os.environ.get("LIVER_ENGINE_PORT") or
+                  os.environ.get("ENGINE_PORT") or 9000)
+        _serve_cloud_dir(_ep)
+    else:
+        main()
