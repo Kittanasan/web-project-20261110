@@ -1,0 +1,17 @@
+{
+  "saved_at": "2026-11-10T11:22:50",
+  "center": "ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา",
+  "division": "กรมประมง กระทรวงเกษตรและสหกรณ์",
+  "model": "liverV1.pt",
+  "sample_id": "CC-AQ-2569-TEST",
+  "sample_name": "ทดสอบระบบ_บันทึกรายงาน",
+  "inspector": "ทดสอบอัตโนมัติ",
+  "note": "ภาพทดสอบจากสคริปต์",
+  "image": "20261110-112250_ทดสอบระบบ_บันทึกรายงาน.jpg",
+  "model_result": {},
+  "model_confidence_pct": 0.0,
+  "final_result": "Medium",
+  "final_confidence_pct": null,
+  "edited": true,
+  "detections": []
+}

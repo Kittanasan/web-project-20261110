@@ -1,0 +1,462 @@
+/* ---------------- บันทึกผล + ตารางบันทึกผล ---------------- */
+function confOf(level) {
+  if (!currentData || !currentData.verdict) return null;
+  if (level === currentData.verdict) return Number(currentData.confidence_pct || 0);
+  const lp = currentData.level_pct || {};
+  return lp[level] !== undefined ? Number(lp[level]) : null;
+}
+
+function buildRecord() {
+  const modelLv = currentData && currentData.verdict ? currentData.verdict : null;
+  const final = recResultEl.value || finalLevelEl.value || "Medium";
+  const conf = confOf(final);
+  const edited = !!modelLv && final !== modelLv;
+  const label = (recLabelEl.value || sampleIdEl.value || "").trim();
+  return {
+    no: Number(recNoEl.value) || null,
+    savedAt: new Date().toISOString(),
+    label: label,
+    sampleId: label,
+    title: label || ((currentFile && currentFile.name) || "sample").replace(/\.[^.]+$/, ""),
+    fileName: (currentFile && currentFile.name) || "",
+    farm: (farm2El.value || farmEl.value || "").trim(),
+    sampleName: "",
+    inspector: (recInspectorEl.value || inspectorEl.value || "").trim(),
+    note: noteEl.value.trim(),
+    modelResult: modelLv,
+    modelConfidence: currentData ? Number(currentData.confidence_pct || 0) : null,
+    finalResult: final,
+    finalConfidence: conf,
+    overrideNote: finalNoteEl.value.trim(),
+    edited: edited,
+    detections: (currentData && currentData.detections) || [],
+    imageDataUrl: currentAnnotated || originalDataUrl
+  };
+}
+
+/* เติมค่าจากผลการประเมินลงในฟอร์มบันทึกผล */
+function fillRecordForm(data) {
+  if (!data || !data.verdict) { recConfEl.value = "—"; return; }
+  recResultEl.value = data.verdict;
+  const c = confOf(data.verdict);
+  recConfEl.value = (c === null ? "" : c.toFixed(1)) + "%";
+}
+
+function pickCurrentResult() {
+  if (!currentData || !currentData.verdict) {
+    toast("ยังไม่มีผลจากแบบจำลอง — เลือกผลตรวจในช่อง ‘ผลตรวจที่ได้’ ได้เอง", true);
+    recResultEl.focus();
+    return;
+  }
+  recResultEl.value = currentData.verdict;
+  finalLevelEl.value = currentData.verdict;
+  fillRecordForm(currentData);
+  syncRecordForm();
+  checkOverride();
+  finalNoteEl.value = "";
+  toast("ใช้ผลจากแบบจำลอง: " + currentData.verdict);
+}
+
+function syncRecordForm() {
+  const lv = recResultEl.value;
+  const c = confOf(lv);
+  recConfEl.value = c === null ? "" : c.toFixed(1) + "%";
+  if (!recLabelEl.value.trim() && sampleIdEl.value.trim()) recLabelEl.value = sampleIdEl.value.trim();
+  if (!farm2El.value.trim() && farmEl.value.trim()) farm2El.value = farmEl.value.trim();
+  if (!recInspectorEl.value.trim() && inspectorEl.value.trim()) recInspectorEl.value = inspectorEl.value.trim();
+}
+
+/* เก็บฟอร์มที่กรอกไว้ กรณีรีเฟรชหน้า */
+const FORM_KEY = "liverRecordFormV1";
+function persistForm() {
+  try {
+    localStorage.setItem(FORM_KEY, JSON.stringify({
+      label: recLabelEl.value, farm: farm2El.value, result: recResultEl.value,
+      inspector: recInspectorEl.value, note: noteEl.value
+    }));
+  } catch (e) { /* ไม่มีพื้นที่เก็บ — ข้ามไป */ }
+}
+function restoreForm() {
+  try {
+    const raw = localStorage.getItem(FORM_KEY);
+    if (!raw) return;
+    const f = JSON.parse(raw) || {};
+    if (f.label) recLabelEl.value = f.label;
+    if (f.farm) farm2El.value = f.farm;
+    if (f.result) recResultEl.value = f.result;
+    if (f.inspector) recInspectorEl.value = f.inspector;
+    if (f.note) noteEl.value = f.note;
+  } catch (e) { /* ข้ามไป */ }
+}
+[recLabelEl, farm2El, recResultEl, recInspectorEl].forEach(el => el.addEventListener("input", () => {
+  if (el === recResultEl) { syncRecordForm(); persistForm(); return; }
+  if (el === recLabelEl) sampleIdEl.value = recLabelEl.value;
+  if (el === farm2El) farmEl.value = farm2El.value;
+  if (el === recInspectorEl) inspectorEl.value = recInspectorEl.value;
+  persistForm();
+}));
+recResultEl.addEventListener("change", () => {
+  finalLevelEl.value = recResultEl.value;
+  checkOverride();
+  syncRecordForm();
+  persistForm();
+});
+recordClearFormBtn.addEventListener("click", () => {
+  recLabelEl.value = ""; farm2El.value = ""; recInspectorEl.value = ""; noteEl.value = "";
+  sampleIdEl.value = ""; farmEl.value = ""; inspectorEl.value = "";
+  finalNoteEl.value = "";
+  const lv = (currentData && currentData.verdict) ? currentData.verdict : "Medium";
+  recResultEl.value = lv;
+  finalLevelEl.value = lv;
+  fillRecordForm(currentData);
+  persistForm();
+  toast("ล้างฟอร์มแล้ว — ลำดับที่จะออกอัตโนมัติเมื่อบันทึก");
+  recLabelEl.focus();
+});
+saveBtn.addEventListener("click", async () => {
+  const rec = buildRecord();
+  if (!rec.label) {
+    recLabelEl.focus();
+    toast("กรุณากรอก Label ตัวอย่างก่อนบันทึก", true);
+    return;
+  }
+  if (!rec.farm) {
+    farm2El.focus();
+    toast("กรุณากรอกฟาร์มที่มาของตัวอย่าง", true);
+    return;
+  }
+  if (!rec.inspector) {
+    recInspectorEl.focus();
+    toast("กรุณากรอกชื่อผู้ตรวจวิเคราะห์", true);
+    return;
+  }
+  saveBtn.disabled = true;
+  setSaveStatus("กำลังบันทึก…", "busy");
+
+  /* 1) พยายามบันทึกภาพผลประเมิน + รายงานลงเซิร์ฟเวอร์ (exports/) */
+  let serverMsg = "", serverFile = "", serverImage = "";
+  try {
+    if (apiBase) {
+      const res = await fetch(apiBase + "/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: rec.imageDataUrl || "",
+          title: rec.label,
+          sampleName: rec.label,
+          sampleId: rec.sampleId,
+          farm: rec.farm,
+          inspector: rec.inspector,
+          note: rec.note,
+          modelResult: rec.modelResult || "",
+          modelConfidence: rec.modelConfidence,
+          finalResult: rec.finalResult,
+          finalConfidence: rec.finalConfidence,
+          overrideNote: rec.overrideNote,
+          edited: rec.edited,
+          detections: rec.detections
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || ("HTTP " + res.status));
+      rec.no = data.no;
+      rec.savedAt = data.saved_at || rec.savedAt;
+      serverFile = data.report_file;
+      serverImage = data.image_file;
+      lastNo = Math.max(lastNo, Number(data.no) || 0);
+      serverMsg = " บันทึกไฟล์ลงโฟลเดอร์ exports แล้ว: " + data.image_file + " และ " + data.report_file;
+      saveFolderEl.textContent = "โฟลเดอร์รายงาน: " + data.folder;
+    } else {
+      lastNo = Math.max(lastNo, ...history.map(h => Number(h.no) || 0)) + 1;
+      rec.no = lastNo;
+    }
+  } catch (err) {
+    lastNo = Math.max(lastNo, ...history.map(h => Number(h.no) || 0)) + 1;
+    rec.no = lastNo;
+    toast("บันทึกฝั่งเซิร์ฟเวอร์ไม่สำเร็จ: " + err.message + " — เก็บในเบราว์เซอร์แทน", true);
+  }
+  if (!rec.no) { lastNo = Math.max(lastNo, ...history.map(h => Number(h.no) || 0)) + 1; rec.no = lastNo; }
+  rec.serverFile = serverFile;
+  rec.serverImage = serverImage;
+
+  /* 2) เก็บลงตารางในเบราว์เซอร์ */
+  history.unshift(rec);
+  persistHistory();
+  renderRecordTable(rec.savedAt);
+  setSaveStatus("บันทึกลำดับที่ " + rec.no + " แล้ว (" + fmtDate(rec.savedAt) + ")" + serverMsg, "ok");
+  saveBtn.disabled = false;
+  toast("บันทึกผลการตรวจลำดับที่ " + rec.no + " เรียบร้อย");
+
+  /* 3) เตรียมฟอร์มสำหรับรายการถัดไป */
+  recNoEl.value = "";
+  recLabelEl.value = "";
+  sampleIdEl.value = "";
+  finalNoteEl.value = "";
+  persistForm();
+  recLabelEl.focus();
+});
+
+function setSaveStatus(msg, kind) {
+  saveStatusEl.textContent = msg;
+  saveStatusEl.className = "status" + (kind ? " " + kind : "");
+}
+
+/* ---------------- ที่เก็บข้อมูล (localStorage) ---------------- */
+const HISTORY_KEY = "liverFatEvalRecordsV3";   // ตารางบันทึกผล
+const IMAGE_KEY = "liverFatEvalImagesV1";      // ภาพผลประเมินแยกไว้ (กันพื้นที่หลักเต็ม)
+const IMAGE_SAVE_LIMIT = 8;                    // เก็บภาพในเบราว์เซอร์สูงสุดกี่รายการ
+
+function persistHistory() {
+  const plain = history.map(h => {
+    const c = Object.assign({}, h);
+    delete c.imageDataUrl;
+    return c;
+  });
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(plain.slice(0, 300)));
+  } catch (e) { /* พื้นที่เต็ม */ }
+
+  /* เก็บภาพเฉพาะรายการใหม่สุด — ถ้าเต็มให้ลดจำนวนลง */
+  try {
+    const imgs = {};
+    let n = 0;
+    for (const h of history) {
+      if (h.imageDataUrl && n < IMAGE_SAVE_LIMIT) { imgs[h.savedAt] = h.imageDataUrl; n++; }
+    }
+    localStorage.setItem(IMAGE_KEY, JSON.stringify(imgs));
+  } catch (e) {
+    try { localStorage.removeItem(IMAGE_KEY); } catch (e2) { /* ข้ามไป */ }
+  }
+}
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    history = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(history)) history = [];
+  } catch (e) { history = []; }
+  try {
+    const rawImg = localStorage.getItem(IMAGE_KEY);
+    const imgs = rawImg ? JSON.parse(rawImg) : {};
+    history.forEach(h => { if (imgs[h.savedAt]) h.imageDataUrl = imgs[h.savedAt]; });
+  } catch (e) { /* ไม่มีภาพเก็บไว้ */ }
+  lastNo = history.reduce((m, h) => Math.max(m, Number(h.no) || 0), 0);
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso || "-";
+  const p = (n) => String(n).padStart(2, "0");
+  return p(d.getDate()) + "/" + p(d.getMonth() + 1) + "/" + (d.getFullYear() + 543) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+function tagClass(lv) { return lv === "Hight" ? "t-h" : lv === "Medium" ? "t-m" : "t-l"; }
+function levelText(lv) {
+  if (lv === "Hight") return "ตรวจพบเม็ดไขมันมาก";
+  if (lv === "Medium") return "ตรวจพบเม็ดไขมันปานกลาง";
+  if (lv === "Low") return "ตรวจพบเม็ดไขมันน้อย";
+  return "-";
+}
+function levelColor(lv) {
+  if (lv === "Hight") return "#0e8fae";
+  if (lv === "Medium") return "#c98a12";
+  if (lv === "Low") return "#b3261e";
+  return "#5b7288";
+}
+/* ---------------- วาดตารางบันทึกผล ---------------- */
+function renderRecordTable(highlightTs) {
+  /* รวมรายการที่บันทึกไว้ในเครื่อง (เซิร์ฟเวอร์) เข้ากับรายการในเบราว์เซอร์ โดยกันซ้ำด้วยชื่อไฟล์รายงาน */
+  const seen = new Set(history.map(h => h.serverFile).filter(Boolean));
+  let rows = history.slice();
+  serverRecords.forEach(r => {
+    if (r.report && seen.has(r.report)) return;
+    rows.push({
+      no: r.no, savedAt: r.saved_at || new Date((r.time || 0) * 1000).toISOString(),
+      label: r.sample_name || r.sample_id || "-", sampleId: r.sample_id || "",
+      farm: r.farm || "", inspector: r.inspector || "",
+      finalResult: r.final_result || "", finalConfidence: r.final_confidence_pct,
+      edited: !!r.edited, modelResult: "", modelConfidence: null,
+      serverFile: r.report, serverImage: r.image, imageDataUrl: null, fromServer: true
+    });
+  });
+
+  const q = (recordFilter.value || "").trim().toLowerCase();
+  if (q) {
+    rows = rows.filter(r => [r.label, r.sampleId, r.farm, r.inspector, r.finalResult]
+      .join(" ").toLowerCase().indexOf(q) >= 0);
+  }
+  rows.sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+
+  recordCount.textContent = rows.length + " รายการ";
+  clearSavedBtn.disabled = history.length === 0 && serverRecords.length === 0;
+  printBtn.disabled = rows.length === 0;
+  recordEmpty.style.display = rows.length ? "none" : "block";
+
+  recordBody.innerHTML = rows.map((r, i) => {
+    const lv = r.finalResult;
+    const conf = (r.finalConfidence === null || r.finalConfidence === undefined || r.finalConfidence === "")
+      ? "—" : Number(r.finalConfidence).toFixed(1);
+    const editedTag = r.edited ? '<div class="rec-num edited" style="font-size:.7rem;font-weight:600">* เจ้าหน้าที่แก้ไขผล</div>' : "";
+    const isNew = highlightTs && r.savedAt === highlightTs ? " class=\"is-new\"" : "";
+    return '<tr' + isNew + ' data-row="' + i + '">' +
+      '<td class="rec-no">' + esc(r.no || (i + 1)) + "</td>" +
+      '<td><b>' + esc(r.label || r.sampleId || "-") + "</b></td>" +
+      '<td class="t-left">' + esc(r.farm || "-") + "</td>" +
+      '<td><span class="rec-val" style="color:' + levelColor(lv) + ";border-color:" + levelColor(lv) +
+        ";background:" + levelColor(lv) + '14">' + esc(lv || "-") +
+        "<small>" + esc(levelText(lv)) + "</small></span></td>" +
+      '<td class="rec-num">' + esc(conf) + (conf === "—" ? "" : " %") + "</td>" +
+      '<td class="t-left">' + esc(r.inspector || "-") + editedTag + "</td>" +
+      '<td style="font-size:.78rem;color:var(--muted)">' + esc(fmtDate(r.savedAt)) + "</td>" +
+      '<td><div class="rec-actions">' +
+        '<a class="act-view" href="#" data-view="' + i + '">ดูภาพ</a>' +
+        '<a class="act-del" href="#" data-delete="' + i + '">ลบ</a>' +
+      "</div></td></tr>";
+  }).join("");
+  renderRecordTable._rows = rows;
+}
+
+recordFilter.addEventListener("input", () => renderRecordTable());
+
+recordBody.addEventListener("click", async (e) => {
+  const a = e.target.closest("a");
+  if (!a) return;
+  e.preventDefault();
+  const rows = renderRecordTable._rows || [];
+  if (a.dataset.view !== undefined) {
+    const r = rows[Number(a.dataset.view)];
+    if (!r) return;
+    if (r.imageDataUrl) {
+      showImageModal(r.imageDataUrl, "ผลประเมิน ลำดับที่ " + (r.no || "-") + " · " + (r.label || ""));
+    } else if (r.serverImage && apiBase) {
+      window.open(apiBase + "/exports/" + encodeURIComponent(r.serverImage), "_blank");
+    } else {
+      toast("ไม่พบภาพผลประเมินของรายการนี้", true);
+    }
+  } else if (a.dataset.delete !== undefined) {
+    const r = rows[Number(a.dataset.delete)];
+    if (!r) return;
+    if (!confirm("ยืนยันการลบข้อมูลลำดับที่ " + (r.no || "-") + " (" + (r.label || "-") + ") ?" +
+      (r.serverFile && apiBase ? "\nไฟล์ภาพและรายงานในโฟลเดอร์ exports จะถูกลบด้วย" : ""))) return;
+    /* ลบในเบราว์เซอร์ */
+    const idx = history.findIndex(h => h.savedAt === r.savedAt && (h.no || null) === (r.no || null));
+    if (idx >= 0) history.splice(idx, 1);
+    persistHistory();
+    /* ลบไฟล์ฝั่งเซิร์ฟเวอร์ */
+    if (r.serverFile && apiBase) {
+      try {
+        const res = await fetch(apiBase + "/delete", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: r.serverFile })
+        });
+        const j = await res.json();
+        if (!res.ok || !j.ok) throw new Error(j.error || ("HTTP " + res.status));
+        serverRecords = serverRecords.filter(s => s.report !== r.serverFile);
+      } catch (err) {
+        toast("ลบไฟล์ในโฟลเดอร์ exports ไม่สำเร็จ: " + err.message, true);
+      }
+    }
+    renderRecordTable();
+    setSaveStatus("ลบข้อมูลลำดับที่ " + (r.no || "-") + " แล้ว");
+    toast("ลบข้อมูลแล้ว");
+  }
+});
+
+clearSavedBtn.addEventListener("click", async () => {
+  if (!history.length && !serverRecords.length) return;
+  if (!confirm("ยืนยันลบข้อมูลทั้งหมด " + (history.length + serverRecords.length) + " รายการ?\n" +
+    (apiBase ? "ไฟล์ภาพและรายงานในโฟลเดอร์ exports จะถูกลบทั้งหมดด้วย" : ""))) return;
+  let fail = 0;
+  if (apiBase) {
+    for (const r of serverRecords.slice()) {
+      try {
+        const res = await fetch(apiBase + "/delete", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: r.report })
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+      } catch (err) { fail++; }
+    }
+    serverRecords = [];
+  }
+  history = [];
+  try { localStorage.removeItem(IMAGE_KEY); } catch (e) { /* ข้ามไป */ }
+  persistHistory();
+  renderRecordTable();
+  setSaveStatus(fail ? ("ลบข้อมูลแล้ว แต่ลบไฟล์ฝั่งเครื่องไม่สำเร็จ " + fail + " ไฟล์")
+                     : "ลบข้อมูลทั้งหมดแล้ว", fail ? "err" : "ok");
+  toast(fail ? "ลบข้อมูลแล้ว (มีไฟล์ที่ลบไม่สำเร็จ " + fail + ")" : "ลบข้อมูลทั้งหมดแล้ว", !!fail);
+});
+
+/* ---------------- โหลดรายการที่บันทึกไว้ในเครื่อง ---------------- */
+async function loadServerRecords(quiet) {
+  if (!apiBase) return;
+  try {
+    const res = await fetch(apiBase + "/exports", { cache: "no-store" });
+    const j = await res.json();
+    if (!res.ok || !j.ok) throw new Error(j.error || ("HTTP " + res.status));
+    serverRecords = j.exports || [];
+    lastNo = Math.max(lastNo, ...serverRecords.map(s => Number(s.no) || 0));
+    renderRecordTable();
+    if (!quiet) toast("โหลดรายการจากโฟลเดอร์ exports แล้ว " + serverRecords.length + " รายการ");
+  } catch (err) {
+    if (!quiet) toast("โหลดรายการไม่สำเร็จ: " + err.message, true);
+  }
+}
+reloadBtn.addEventListener("click", () => loadServerRecords(false));
+/* ---------------- หน้าต่างดูภาพ ---------------- */
+function showImageModal(src, caption) {
+  let box = $("imgModal");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "imgModal";
+    box.className = "modal";
+    box.innerHTML = '<div class="modal-in"><div class="modal-bar"><span id="imgModalCap"></span>' +
+      '<button class="secondary" id="imgModalClose" style="min-height:34px;padding:4px 12px">ปิด</button></div>' +
+      '<img id="imgModalImg" alt="ภาพผลประเมิน" /></div>';
+    document.body.appendChild(box);
+    box.addEventListener("click", (e) => {
+      if (e.target === box || e.target.id === "imgModalClose") box.classList.remove("show");
+    });
+  }
+  $("imgModalCap").textContent = caption || "";
+  $("imgModalImg").src = src;
+  box.classList.add("show");
+}
+
+/* ---------------- ส่งออก / พิมพ์ ---------------- */
+function downloadJson(rows, name) {
+  const clean = rows.map(r => {
+    const c = Object.assign({}, r);
+    delete c.imageDataUrl;
+    return c;
+  });
+  const blob = new Blob([JSON.stringify(clean, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+}
+
+exportAllBtn.addEventListener("click", () => {
+  const rows = renderRecordTable._rows || history;
+  if (!rows.length) { toast("ยังไม่มีข้อมูลให้ส่งออก", true); return; }
+  downloadJson(rows, "ตารางบันทึกผลการตรวจ_" + new Date().toISOString().slice(0, 10) + ".json");
+  toast("ส่งออกข้อมูล " + rows.length + " รายการแล้ว");
+});
+
+exportBtn.addEventListener("click", () => {
+  const rows = renderRecordTable._rows || history;
+  if (!rows.length) { toast("ยังไม่มีข้อมูลให้ส่งออก", true); return; }
+  downloadJson(rows, "ตารางบันทึกผลการตรวจ_" + new Date().toISOString().slice(0, 10) + ".json");
+});
+
+printBtn.addEventListener("click", () => window.print());
+
+/* ---------------- เริ่มต้น ---------------- */
+restoreForm();
+loadHistory();
+renderRecordTable();
+setMode("โหมดไฟล์ HTML เดี่ยว",
+  "ไฟล์นี้เปิดได้ทันทีโดยไม่ต้องรันเซิร์ฟเวอร์ — กำลังตรวจหาว่ามีเครื่องประมวลผล (liverV1.pt) เปิดอยู่หรือไม่…", "warnbox");
+window.addEventListener("beforeunload", persistForm);

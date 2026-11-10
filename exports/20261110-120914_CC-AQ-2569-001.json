@@ -1,0 +1,21 @@
+{
+  "no": 1,
+  "saved_at": "2026-11-10T12:09:14",
+  "center": "ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา",
+  "division": "กรมประมง กระทรวงเกษตรและสหกรณ์",
+  "model": "liverV1.pt",
+  "sample_id": "CC-AQ-2569-001",
+  "sample_name": "CC-AQ-2569-001",
+  "farm": "ฟาร์มลุงสมชาย ต.บางปะกง",
+  "inspector": "นายทดสอบ ระบบดี",
+  "note": "ทดสอบระบบบันทึกข้อมูล",
+  "image": "20261110-120914_CC-AQ-2569-001.jpg",
+  "model_result": {},
+  "model_confidence_pct": 0.0,
+  "final_result": "Hight",
+  "final_confidence_pct": 0.0,
+  "edited": true,
+  "override_note": "ทดสอบแก้ไขผลโดยเจ้าหน้าที่",
+  "detections": [],
+  "final_result_text": "ตรวจพบเม็ดไขมันมาก"
+}

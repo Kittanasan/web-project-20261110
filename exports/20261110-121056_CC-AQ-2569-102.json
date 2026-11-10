@@ -1,0 +1,21 @@
+{
+  "no": 3,
+  "saved_at": "2026-11-10T12:10:56",
+  "center": "ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา",
+  "division": "กรมประมง กระทรวงเกษตรและสหกรณ์",
+  "model": "liverV1.pt",
+  "sample_id": "CC-AQ-2569-102",
+  "sample_name": "CC-AQ-2569-102",
+  "farm": "ฟาร์มลุงสมหญิง ต.บางวัว",
+  "inspector": "นางสมหญิง รักงาน",
+  "note": "ทดสอบตารางบันทึกผล",
+  "image": "20261110-121056_CC-AQ-2569-102.jpg",
+  "model_result": "Medium",
+  "model_confidence_pct": 91.2,
+  "final_result": "Medium",
+  "final_confidence_pct": 88.4,
+  "edited": false,
+  "override_note": "",
+  "detections": [],
+  "final_result_text": "ตรวจพบเม็ดไขมันปานกลาง"
+}

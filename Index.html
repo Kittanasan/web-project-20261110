@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ระบบประเมินเม็ดไขมันในตับจากภาพถ่าย | ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา</title>
+<style>
+  :root{
+    --bg:#eef3f9; --surface:#ffffff; --surface-2:#f6f9fc; --line:#d3dfec; --line-2:#e6eef7;
+    --navy:#123f6d; --navy-2:#1d5382; --navy-deep:#0b2f53;
+    --gold:#b98b2e; --gold-soft:#f3e6c9;
+    --text:#14263a; --muted:#5b7288;
+    --accent:#1668a8; --ok:#1c7c54; --warn:#a8620a; --danger:#b3261e;
+    --radius:12px; --sp:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Sarabun","Noto Sans Thai","Leelawadee UI",Tahoma,system-ui,sans-serif;
+    font-size:16px; line-height:1.62;
+    display:flex; flex-direction:column; align-items:center;
+    padding:0 12px 40px;
+  }
+  /* ---------- แถบหน่วยงาน ---------- */
+  .agency{width:100%; background:linear-gradient(180deg,var(--navy),var(--navy-deep));
+    color:#fff; border-bottom:4px solid var(--gold);}
+  .agency-in{max-width:1120px; margin:0 auto; padding:14px 16px; display:flex; align-items:center; gap:16px;}
+  .agency img{width:74px; height:74px; flex:0 0 74px; display:block}
+  .agency .t1{font-size:1.02rem; font-weight:700; letter-spacing:.1px}
+  .agency .t2{font-size:.86rem; color:#cfe0f1; line-height:1.5}
+  .agency .t3{font-size:.78rem; color:#9fc0dd; margin-top:2px; letter-spacing:.4px}
+  @media(max-width:520px){
+    .agency img{width:56px;height:56px;flex-basis:56px}
+    .agency .t1{font-size:.95rem}
+  }
+  /* ---------- แถบชื่อระบบ ---------- */
+  .sysbar{width:100%; background:var(--surface); border-bottom:1px solid var(--line);}
+  .sysbar-in{max-width:1120px; margin:0 auto; padding:16px}
+  .sysbar h1{margin:0; font-size:1.3rem; color:var(--navy); line-height:1.45}
+  .sysbar p{margin:4px 0 0; font-size:.9rem; color:var(--muted)}
+  .crumbs{font-size:.78rem; color:var(--muted); margin-bottom:6px; letter-spacing:.2px}
+
+  main{width:100%; max-width:1120px; margin:var(--sp) auto 0}
+  .grid{display:grid; grid-template-columns:1fr; gap:var(--sp)}
+  @media(min-width:900px){ .grid{grid-template-columns:1.1fr .9fr; align-items:start} }
+
+  /* ---------- แถบโหมดการทำงาน ---------- */
+  .modebar{width:100%; max-width:1120px; margin:var(--sp) auto 0;}
+  .modebar .box{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+    border-left:5px solid var(--accent);}
+  .modebar .box.warnbox{border-left-color:var(--warn)}
+  .modebar .box.okbox{border-left-color:var(--ok)}
+  .modebar .title{font-weight:700; color:var(--navy); font-size:.95rem}
+  .modebar .desc{font-size:.85rem; color:var(--muted); flex:1 1 320px; min-width:220px}
+  .modebar button{min-height:38px; padding:7px 14px; font-size:.88rem}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px; box-shadow:0 1px 2px rgba(18,63,109,.06), 0 8px 24px -22px rgba(18,63,109,.5);
+  }
+  .card h2{
+    margin:0 0 14px; font-size:1rem; color:var(--navy); font-weight:700;
+    padding-bottom:10px; border-bottom:2px solid var(--line-2);
+    display:flex; align-items:center; gap:8px;
+  }
+  .card h2 .n{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:24px; height:24px; border-radius:6px; background:var(--navy); color:#fff;
+    font-size:.82rem; font-weight:700; flex:0 0 24px;
+  }
+
+  /* ---------- พื้นที่อัปโหลด ---------- */
+  .drop{
+    border:2px dashed #a9c1d8; border-radius:var(--radius); padding:26px 18px; text-align:center;
+    color:var(--muted); cursor:pointer; background:var(--surface-2); transition:.15s;
+  }
+  .drop:hover,.drop.over{border-color:var(--accent); background:#eaf3fc; color:var(--text)}
+  .drop b{color:var(--navy); font-size:1.02rem}
+  .drop .ic{font-size:1.7rem; color:var(--navy-2); margin-bottom:2px}
+  .drop small{display:block; margin-top:6px; font-size:.82rem}
+  .drop.hide{display:none}
+  #browse{display:none}
+  #previewWrap{display:none; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#0b2f53}
+  #previewWrap.show{display:block}
+  #preview{display:block; width:100%; height:auto}
+
+  .btnrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+  button{
+    font:inherit; font-size:.95rem; font-weight:600; border-radius:9px; padding:11px 18px;
+    min-height:44px; cursor:pointer; border:1px solid transparent; transition:.15s;
+  }
+  button.primary{background:var(--navy); color:#fff}
+  button.primary:hover{background:var(--navy-2)}
+  button.secondary{background:var(--surface); color:var(--navy); border-color:var(--line); }
+  button.secondary:hover{background:var(--surface-2); border-color:#b8cde2}
+  button.gold{background:var(--gold); color:#241a04}
+  button.gold:hover{filter:brightness(1.06)}
+  button:disabled{opacity:.5; cursor:not-allowed}
+  button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,
+  .drop:focus-visible{outline:3px solid #7db6e6; outline-offset:2px}
+
+  .status{font-size:.88rem; color:var(--muted); margin-top:10px; min-height:22px}
+  .status.err{color:var(--danger)}
+  .status.ok{color:var(--ok)}
+  .status.busy{color:var(--warn)}
+
+  /* ---------- ฟอร์ม ---------- */
+  .field{margin-bottom:12px}
+  .field label{display:block; font-size:.85rem; font-weight:600; color:var(--navy); margin-bottom:4px}
+  .field input,.field textarea,select{
+    width:100%; font:inherit; font-size:.95rem; padding:9px 11px; color:var(--text);
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+  }
+  .field input:focus,.field textarea:focus,select:focus{border-color:var(--accent); outline:none; box-shadow:0 0 0 3px #dceaf7}
+  .field textarea{resize:vertical; min-height:64px}
+  .hint{font-size:.78rem; color:var(--muted); margin-top:3px}
+  .help-list{margin:6px 0 8px; padding-left:22px; font-size:.86rem; line-height:1.75; color:var(--text)}
+  .help-list li{margin-bottom:5px}
+  .help-list code{background:#eef4fa; border:1px solid var(--line); border-radius:5px; padding:1px 5px; font-size:.82rem}
+</style>
+</head>
+<body>
+
+<div class="agency">
+  <div class="agency-in">
+    <svg viewBox="0 0 200 200" width="74" height="74" role="img" aria-label="ตรากรมประมง" style="flex:0 0 74px">
+      <defs>
+        <linearGradient id="ag1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2f7ec4"/><stop offset="1" stop-color="#164a7c"/>
+        </linearGradient>
+        <linearGradient id="ag2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#e8c66a"/><stop offset="1" stop-color="#b08b28"/>
+        </linearGradient>
+      </defs>
+      <circle cx="100" cy="100" r="97" fill="url(#ag1)"/>
+      <circle cx="100" cy="100" r="97" fill="none" stroke="url(#ag2)" stroke-width="4"/>
+      <circle cx="100" cy="100" r="86" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.5"/>
+      <circle cx="100" cy="100" r="80" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="3 6"/>
+      <circle cx="100" cy="100" r="58" fill="#0f3a63" stroke="url(#ag2)" stroke-width="2.5"/>
+      <path d="M64 102c11-17 33-24 51-14 8 4 14 10 18 17-4 7-10 13-18 17-18 10-40 3-51-14z" fill="#ffffff"/>
+      <path d="M64 102l-14-12v24z" fill="#ffffff"/>
+      <circle cx="118" cy="99" r="3.4" fill="#0f3a63"/>
+      <path d="M96 90c6 8 6 16 0 24" stroke="#0f3a63" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <path d="M108 91c5 7 5 15 0 22" stroke="#0f3a63" stroke-width="2" fill="none" stroke-opacity="0.85"/>
+      <g opacity="0.92">
+        <path d="M136 124c-9-13-27-19-41-11-6 3-11 8-14 13 3 6 8 11 14 13 14 8 32 2 41-11z" fill="#d8ecff"/>
+        <path d="M136 124l11-9v18z" fill="#d8ecff"/>
+        <circle cx="96" cy="126" r="2.8" fill="#0f3a63"/>
+      </g>
+      <path d="M56 148c10-6 20-6 30 0s20 6 30 0 20-6 30 0" fill="none" stroke="#8fd0ff" stroke-width="3.4" stroke-linecap="round"/>
+      <path d="M56 158c10-6 20-6 30 0s20 6 30 0 20-6 30 0" fill="none" stroke="#8fd0ff" stroke-opacity="0.7" stroke-width="2.6" stroke-linecap="round"/>
+      <text x="100" y="78" text-anchor="middle" font-family="'Sarabun','Noto Sans Thai','Leelawadee UI',Tahoma,sans-serif" font-size="15" font-weight="700" fill="#ffffff" letter-spacing="1">กรมประมง</text>
+      <text x="100" y="140" text-anchor="middle" font-family="'Sarabun','Noto Sans Thai','Leelawadee UI',Tahoma,sans-serif" font-size="7.5" fill="#9fc9ef" letter-spacing="0.6">DEPARTMENT OF FISHERIES</text>
+    </svg>
+    <div>
+      <div class="t1">กรมประมง กระทรวงเกษตรและสหกรณ์</div>
+      <div class="t2">ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา</div>
+      <div class="t3">Coastal Aquaculture Research and Development Center, Chachoengsao</div>
+    </div>
+  </div>
+</div>
+
+<div class="sysbar">
+  <div class="sysbar-in">
+    <div class="crumbs">หน้าหลัก › งานตรวจคุณภาพสัตว์น้ำ › ประเมินเม็ดไขมันในตับ</div>
+    <h1>ระบบประเมินเม็ดไขมันในตับจากภาพถ่าย (Image-Based Fat Assessment)
+      <span id="serverBadge" class="badge-status off">กำลังตรวจสอบสถานะ…</span></h1>
+    <p>แนบภาพถ่ายตัวอย่างตับเพื่อให้แบบจำลองช่วยคัดกรองระดับเม็ดไขมัน แล้วให้เจ้าหน้าที่ตรวจทานและยืนยันผลก่อนบันทึก</p>
+  </div>
+</div>
+
+<div class="modebar">
+  <div class="box">
+    <div>
+      <div class="title" id="modeTitle">กำลังตรวจสอบสถานะเครื่องประมวลผล…</div>
+      <div id="modeDesc" class="desc"></div>
+    </div>
+    <div class="btns" style="display:flex; gap:8px; flex-wrap:wrap">
+      <button id="connectBtn" class="primary" style="display:none">เชื่อมต่อเครื่องประมวลผล</button>
+      <button id="helpBtn" class="secondary">คู่มือติดตั้งเครื่องใหม่</button>
+      <button id="exportBtn" class="secondary" style="display:none">ส่งออกข้อมูลดิบ (JSON)</button>
+    </div>
+  </div>
+  <div id="helpBox" class="box warnbox" style="display:none; margin-top:10px">
+    <div style="width:100%">
+      <div class="title" style="margin-bottom:6px">คู่มือติดตั้งระบบบนเครื่องอื่น (เปิดเมื่อย้ายเครื่อง)</div>
+      <ol class="help-list">
+        <li>คัดลอก <b>โฟลเดอร์โปรแกรมทั้งหมด</b> ไปยังเครื่องปลายทาง (ต้องมี <code>app.py</code>, <code>Index.html</code>, <code>live.js</code>, <code>liverV1.pt</code> และโฟลเดอร์ <code>assets</code>)</li>
+        <li>เครื่องปลายทางต้องมี Python ที่ติดตั้ง <b>torch + ultralytics</b> — วิธีที่ง่ายที่สุดคือคัดลอกโฟลเดอร์
+            <code>runtime\python311</code> จากเครื่องที่ใช้งานได้ มาวางไว้ข้าง <code>start.bat</code>
+            (path ต้องเป็น <code>runtime\python311\python.exe</code>) ระบบจะใช้เองอัตโนมัติ</li>
+        <li>หรือติดตั้ง Python 3.11 (64-bit) บนเครื่องปลายทางแล้วรันคำสั่ง <code>pip install ultralytics</code>
+            (ต้องมีพื้นที่ว่างราว 5 GB)</li>
+        <li>ดับเบิลคลิก <b>ตรวจสอบระบบ.bat</b> — จะบอกทีละข้อว่าขาดอะไร และทดลองวิเคราะห์ภาพจริงให้ดู</li>
+        <li>ถ้าผ่านทุกข้อ ดับเบิลคลิก <b>start.bat</b> แล้วเปิด <code>http://127.0.0.1:8000</code>
+            (หรือให้เครื่องอื่นในวงเดียวกันใช้ได้ ให้ตั้ง <code>LIVER_HOST=0.0.0.0</code> ก่อนเปิด แล้วเปิดด้วย IP ของเครื่องนี้)</li>
+        <li>ถ้าขึ้นว่าเชื่อมต่อเครื่องประมวลผลไม่ได้: ดูข้อความในหน้าต่าง start.bat ว่าแจ้ง error อะไร
+            (โดยทั่วไปคือ “ไม่พบ Python ที่มี torch/ultralytics” หรือพอร์ต 8000 ถูกโปรแกรมอื่นใช้)</li>
+        <li>ถ้าขึ้นว่า “เซิร์ฟเวอร์ตอบ แต่ไม่มีตัววิเคราะห์” = ตัวที่รัน app.py อยู่เป็น Python ธรรมดา
+            ที่ไม่มี torch/ultralytics ให้ปิดหน้าต่างนั้นแล้วเปิดด้วย <b>start.bat</b> เท่านั้น
+            (start.bat จะเลือก Python ที่มี torch ให้เอง)</li>
+      </ol>
+      <div class="hint">รายละเอียดทุกกรณีอยู่ในไฟล์ <code>README-ติดตั้งเครื่องใหม่.txt</code> ข้าง <code>app.py</code></div>
+      <div class="hint">ระบบประมวลผลในเครื่องเท่านั้น ไม่ได้ส่งภาพออกไปอินเทอร์เน็ต · ผลประเมินจากแบบจำลองเป็นข้อมูลช่วยคัดกรอง ต้องให้เจ้าหน้าที่ยืนยันก่อนบันทึกทุกรายการ</div>
+    </div>
+    <button id="helpClose" class="secondary" style="align-self:flex-start">ปิด</button>
+  </div>
+</div>
+
+<main>
+  <div class="grid">
+    <!-- ============ คอลัมน์ซ้าย ============ -->
+    <div>
+      <section class="card">
+        <h2><span class="n">1</span> นำเข้าภาพตัวอย่าง</h2>
+        <div id="drop" class="drop" tabindex="0" role="button" aria-label="เลือกไฟล์ภาพ">
+          <div class="ic">&#128247;</div>
+          <b>ลากภาพมาวางในกรอบนี้</b> หรือคลิกเพื่อเลือกไฟล์จากเครื่อง
+          <small>รองรับ JPG / PNG / BMP / WEBP · ไม่เกิน 30 MB · ภาพจะถูกประมวลผลภายในเครื่องเท่านั้น</small>
+        </div>
+        <input type="file" id="browse" accept="image/png,image/jpeg,image/bmp,image/webp" />
+        <div id="previewWrap"><img id="preview" alt="ภาพตัวอย่างที่นำเข้า" /></div>
+        <div class="btnrow">
+          <button id="runBtn" class="primary" disabled>ประเมินภาพ</button>
+          <button id="clearBtn" class="secondary" disabled>ล้างข้อมูล</button>
+        </div>
+        <div id="statusLeft" class="status">ยังไม่มีภาพในระบบ</div>
+      </section>
+
+      <section class="card" style="margin-top:16px">
+        <h2><span class="n">3</span> ผลการประเมิน</h2>
+        <div id="placeholder" class="status" style="min-height:auto">
+          ผลการประเมินจะปรากฏในส่วนนี้ หลังกดปุ่ม “ประเมินภาพ”
+        </div>
+
+        <div id="result" class="result">
+          <div class="res-head">
+            <div>
+              <div class="lbl">ผลการประเมินจากระบบ</div>
+              <div id="verdictLine" class="verdict-line">—</div>
+              <div id="verdictTh" class="verdict-th"></div>
+            </div>
+            <div class="conf-badge">
+              <div id="confNum" class="conf-num">—</div>
+              <div class="conf-cap">ความมั่นใจ</div>
+            </div>
+          </div>
+
+          <div id="bars" class="bars"></div>
+
+          <div class="meta-line">
+            <span>ตรวจพบ <b id="detCount">0</b> ตำแหน่ง</span>
+            <span>เวลาประมวลผล <b id="msLine">0</b> ms</span>
+            <span>แบบจำลอง <b>liverV1.pt</b></span>
+          </div>
+
+          <div class="override">
+            <div class="ov-head">การตรวจทานโดยเจ้าหน้าที่</div>
+            <p class="hint" style="margin-top:0">
+              หากเห็นว่าผลของระบบยังไม่ตรงกับสภาพจริง ให้ปรับผลการประเมินด้านล่าง ระบบจะบันทึกทั้งผลของแบบจำลองและผลที่เจ้าหน้าที่ทวนสอบ
+            </p>
+            <div class="field">
+              <label for="finalLevel">ผลการประเมินที่ยืนยัน (แก้ไขได้)</label>
+              <select id="finalLevel">
+                <option value="Hight">Hight — ตรวจพบเม็ดไขมันมาก</option>
+                <option value="Medium">Medium — ตรวจพบเม็ดไขมันปานกลาง</option>
+                <option value="Low">Low — ตรวจพบเม็ดไขมันน้อย</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="finalNote">เหตุผล / หมายเหตุการแก้ไขผล</label>
+              <textarea id="finalNote" placeholder="เช่น ผลจากภาพไม่ชัด จึงตรวจสอบซ้ำด้วยกล้องจุลทรรศน์ และปรับเป็นระดับปานกลาง"></textarea>
+            </div>
+            <div id="overrideState" class="ov-state"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ คอลัมน์ขวา ============ -->
+    <div>
+      <section class="card">
+        <h2><span class="n">2</span> ข้อมูลตัวอย่าง / ผู้ตรวจ</h2>
+        <div class="field">
+          <label for="sampleId">รหัสตัวอย่าง</label>
+          <input id="sampleId" type="text" placeholder="เช่น CC-AQ-2569-001" />
+        </div>
+        <div class="field">
+          <label for="sampleName">ชื่อ / รายละเอียดตัวอย่าง</label>
+          <input id="sampleName" type="text" placeholder="เช่น ตับปลากะพง ตัวอย่างที่ 3" />
+        </div>
+        <div class="field">
+          <label for="farm">ฟาร์มที่มาของตัวอย่าง</label>
+          <input id="farm" type="text" placeholder="เช่น ฟาร์มลุงสมชาย ต.บางปะกง จ.ฉะเชิงเทรา" />
+        </div>
+        <div class="field">
+          <label for="inspector">ชื่อผู้ตรวจวิเคราะห์</label>
+          <input id="inspector" type="text" placeholder="ชื่อ-นามสกุล ตำแหน่ง" />
+        </div>
+        <div class="field">
+          <label for="note">หมายเหตุเพิ่มเติม</label>
+          <textarea id="note" placeholder="สภาพตัวอย่าง อุปกรณ์ถ่ายภาพ ฯลฯ"></textarea>
+        </div>
+        <div class="hint">ช่องเหล่านี้ไม่บังคับ — ระบบจะคัดลอกลงฟอร์มบันทึกผลให้อัตโนมัติ</div>
+      </section>
+
+      <section class="card" style="margin-top:16px">
+        <h2><span class="n">4</span> บันทึกและส่งออกรายงาน</h2>
+        <div class="btnrow" style="margin-top:0">
+          <button id="saveImageBtn" class="gold" disabled>บันทึกภาพและผลการประเมิน</button>
+        </div>
+        <div class="btnrow">
+          <button id="printBtn" class="secondary" disabled>พิมพ์ / บันทึกเป็น PDF</button>
+          <button id="clearSavedBtn" class="secondary" disabled>ล้างรายการที่บันทึก</button>
+        </div>
+        <div id="statusSave" class="status">ยังไม่มีรายการที่บันทึก</div>
+        <div class="hint" id="saveFolderHint"></div>
+
+        <div class="saved-head">รายการที่บันทึกแล้ว</div>
+        <div id="savedList" class="saved-list"></div>
+      </section>
+
+      <section class="card" style="margin-top:16px">
+        <h2><span class="n">i</span> คำอธิบายเกณฑ์การประเมิน</h2>
+        <table class="rubric">
+          <thead><tr><th>ระดับ</th><th>ความหมาย</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag t-h">Hight</span></td><td>ตรวจพบเม็ดไขมันมาก</td></tr>
+            <tr><td><span class="tag t-m">Medium</span></td><td>ตรวจพบเม็ดไขมันปานกลาง</td></tr>
+            <tr><td><span class="tag t-l">Low</span></td><td>ตรวจพบเม็ดไขมันน้อย</td></tr>
+          </tbody>
+        </table>
+        <p class="hint" style="margin-top:12px">
+          ผลจากแบบจำลองเป็นเครื่องมือช่วยคัดกรองเบื้องต้น ไม่ใช่ผลวินิจฉัยทางวิชาการ
+          เจ้าหน้าที่ผู้ตรวจต้องยืนยันผลทุกครั้งก่อนนำไปใช้ในรายงานราชการ
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ ตารางบันทึกผล (แสดงผลด้านล่าง) ============ -->
+  <section id="recordCard" class="card record-card">
+    <h2><span class="n">5</span> บันทึกผลการตรวจวิเคราะห์
+      <span id="recordCount" class="rec-count">0 รายการ</span>
+    </h2>
+
+    <div class="rec-bar">
+      <div class="btns">
+        <button id="saveRecordBtn" class="gold" disabled>+ บันทึกผลการตรวจ</button>
+        <button id="recordClearFormBtn" class="secondary">ล้างฟอร์ม</button>
+      </div>
+      <div class="btns">
+        <input id="recordFilter" class="rec-filter" type="search" placeholder="ค้นหา รหัสตัวอย่าง / ฟาร์ม / ผู้ตรวจ" />
+        <button id="exportAllBtn" class="secondary" style="display:none">ส่งออกทั้งหมด (JSON)</button>
+        <button id="reloadBtn" class="secondary" style="display:none">โหลดรายการจากเครื่อง</button>
+      </div>
+    </div>
+
+    <div class="rec-form">
+      <div class="field">
+        <label for="recNo">ลำดับที่</label>
+        <input id="recNo" type="text" readonly placeholder="-" />
+      </div>
+      <div class="field">
+        <label for="recLabel">Label ตัวอย่าง</label>
+        <input id="recLabel" type="text" placeholder="เช่น CC-AQ-2569-001" />
+      </div>
+      <div class="field rec-wide">
+        <label for="farm2">ฟาร์มที่มาของตัวอย่าง</label>
+        <input id="farm2" type="text" placeholder="เช่น ฟาร์มลุงสมชาย ต.บางปะกง จ.ฉะเชิงเทรา" />
+      </div>
+      <div class="field">
+        <label for="recResult">ผลตรวจที่ได้</label>
+        <select id="recResult">
+          <option value="">— เลือกผลตรวจ —</option>
+          <option value="Hight">Hight — ตรวจพบเม็ดไขมันมาก</option>
+          <option value="Medium">Medium — ตรวจพบเม็ดไขมันปานกลาง</option>
+          <option value="Low">Low — ตรวจพบเม็ดไขมันน้อย</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="recConf">เปอร์เซ็นต์ความเชื่อมั่น (%)</label>
+        <input id="recConf" type="text" readonly placeholder="—" />
+      </div>
+      <div class="field rec-wide">
+        <label for="recInspector">ชื่อผู้ตรวจวิเคราะห์</label>
+        <input id="recInspector" type="text" placeholder="ชื่อ-นามสกุล ตำแหน่ง" />
+      </div>
+    </div>
+
+    <div id="statusRecord" class="status">ยังไม่มีรายการที่บันทึก</div>
+    <div class="hint" id="saveFolder"></div>
+
+    <div class="rec-table-wrap">
+      <table class="rec-table">
+        <caption>ตารางบันทึกผลการตรวจวิเคราะห์</caption>
+        <thead>
+          <tr>
+            <th style="width:64px">ลำดับที่</th>
+            <th style="width:130px">Label ตัวอย่าง</th>
+            <th>ฟาร์มที่มาของตัวอย่าง</th>
+            <th style="width:200px">ค่าผลตรวจที่ได้</th>
+            <th style="width:96px">% ความเชื่อมั่น</th>
+            <th style="width:150px">ชื่อผู้ตรวจวิเคราะห์</th>
+            <th style="width:118px">วันที่บันทึก</th>
+            <th style="width:118px">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="recordBody"></tbody>
+      </table>
+      <div id="recordEmpty" class="rec-empty">ยังไม่มีข้อมูล — กรอกข้อมูลด้านบนแล้วกด “+ บันทึกผลการตรวจ” ตารางผลจะแสดงที่นี่</div>
+    </div>
+
+    <div class="btns" style="margin-top:12px; justify-content:flex-end">
+      <button id="printTableBtn" class="secondary" disabled>พิมพ์ตาราง / บันทึกเป็น PDF</button>
+      <button id="clearSavedBtn2" class="danger" disabled>ลบข้อมูลทั้งหมด</button>
+    </div>
+  </section>
+
+  <!-- แสดงเฉพาะตอนพิมพ์: ภาพผลประเมิน + ช่องลงชื่อ -->
+  <div id="printFoot" class="print-only">
+    <div style="text-align:center;margin-top:8px">
+      <img id="printImage" alt="ภาพผลประเมิน" style="display:none;max-width:100%;max-height:62vh;border:1px solid #999" />
+    </div>
+  </div>
+</main>
+
+<footer>
+  ระบบประเมินเม็ดไขมันในตับจากภาพถ่าย · ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา · กรมประมง<br>
+  ประมวลผลภายในเครื่อง (offline) ด้วยแบบจำลอง liverV1.pt — ภาพและผลการประเมินไม่ถูกส่งออกไปภายนอก
+</footer>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- ตัวเชื่อมต่อเครื่องประมวลผล: โหลดจากเซิร์ฟเวอร์ app.py (/live.js) -->
+<script src="live.js" onerror="void 0"></script>
+
+<style>
+  /* ---------- ผลการประเมิน ---------- */
+  .result{display:none}
+  .result.show{display:block}
+  .res-head{display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap}
+  .lbl{font-size:.78rem; color:var(--muted); letter-spacing:.3px}
+  .verdict-line{font-size:1.16rem; font-weight:700; color:var(--navy); margin-top:2px}
+  .verdict-line .tag{font-size:.85rem; vertical-align:middle; margin-right:6px}
+  .verdict-th{font-size:1.5rem; font-weight:700; line-height:1.35; margin-top:2px}
+  .conf-badge{border:1px solid var(--line); border-radius:10px; padding:8px 14px; text-align:center;
+    background:var(--surface-2); min-width:96px;}
+  .conf-num{font-size:1.35rem; font-weight:700; color:var(--navy)}
+  .conf-cap{font-size:.74rem; color:var(--muted)}
+  .bars{margin-top:14px; border-top:1px solid var(--line-2); padding-top:12px}
+  .brow{margin-bottom:10px}
+  .brow .btop{display:flex; justify-content:space-between; gap:8px; font-size:.88rem; color:var(--muted)}
+  .brow .btop b{color:var(--text)}
+  .bar{height:9px; border-radius:99px; background:#e4ecf5; overflow:hidden; margin-top:5px}
+  .bar > i{display:block; height:100%; width:0; border-radius:99px; transition:width .5s}
+  .win-note{font-size:.74rem; font-weight:700; color:var(--navy); border:1px solid var(--navy);
+    border-radius:99px; padding:0 7px; margin-left:6px; background:#eaf3fc}
+  .meta-line{display:flex; gap:16px; flex-wrap:wrap; font-size:.8rem; color:var(--muted);
+    border-top:1px solid var(--line-2); padding-top:10px; margin-top:4px}
+  .meta-line b{color:var(--text)}
+
+  /* ---------- แก้ไขผล ---------- */
+  .override{margin-top:14px; background:#fbf7ec; border:1px solid #e8d9b2; border-radius:10px; padding:14px}
+  .ov-head{font-weight:700; color:#7a5a10; font-size:.92rem; margin-bottom:6px}
+  .override .field label{color:#7a5a10}
+  .override input,.override textarea,.override select{border-color:#e0cfa4}
+  .ov-state{font-size:.84rem; font-weight:600; color:var(--warn); margin-top:4px; min-height:20px}
+  .ov-state.ok{color:var(--ok)}
+
+  /* ---------- ป้ายระดับ ---------- */
+  .tag{display:inline-block; font-size:.76rem; font-weight:700; padding:2px 9px; border-radius:99px; border:1px solid}
+  .t-h{color:#0e6f8c; border-color:#9fd6e3; background:#e8f6fa}
+  .t-m{color:#8a5a06; border-color:#e6cd99; background:#fdf4e2}
+  .t-l{color:#a02b26; border-color:#eebcb8; background:#fdeceb}
+
+  /* ---------- ตารางเกณฑ์ ---------- */
+  .rubric{width:100%; border-collapse:collapse; font-size:.9rem}
+  .rubric th,.rubric td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--line-2)}
+  .rubric th{font-size:.78rem; color:var(--muted); font-weight:600; background:var(--surface-2)}
+
+  /* ---------- รายการที่บันทึก ---------- */
+  .saved-head{font-size:.82rem; font-weight:700; color:var(--navy); margin:16px 0 8px;
+    border-top:1px solid var(--line-2); padding-top:12px}
+  .saved-list{font-size:.85rem}
+  .saved-list .empty{color:var(--muted)}
+  .saved-item{padding:8px 0; border-bottom:1px dashed var(--line-2)}
+  .saved-item:last-child{border-bottom:0}
+  .saved-item .si-top{display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap}
+  .saved-item .si-name{font-weight:600; color:var(--text)}
+  .saved-item .si-sub{color:var(--muted); font-size:.78rem}
+
+  /* ---------- ตารางบันทึกผล ---------- */
+  .record-card{margin-top:16px}
+  .rec-count{font-size:.78rem; font-weight:600; color:var(--navy); background:#eaf3fc;
+    border:1px solid #b8cde2; border-radius:99px; padding:1px 10px; margin-left:auto}
+  .rec-bar{display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-bottom:14px}
+  .btns{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .btns button{min-height:40px; padding:8px 14px; font-size:.9rem}
+  button.danger{background:#fff; color:var(--danger); border-color:#eebcb8}
+  button.danger:hover{background:#fdeceb}
+  .rec-filter{font:inherit; font-size:.88rem; padding:8px 11px; min-width:220px; max-width:100%;
+    border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--text)}
+  .rec-form{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px 12px;
+    background:var(--surface-2); border:1px solid var(--line-2); border-radius:10px; padding:14px; margin-bottom:6px}
+  .rec-form .field{margin:0}
+  .rec-form .field input,.rec-form .field select{font-size:.9rem; padding:8px 10px}
+  .rec-form input[readonly]{background:#eef3f9; color:var(--muted)}
+  .rec-form .rec-wide{grid-column:span 2}
+  @media(max-width:900px){ .rec-form{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media(max-width:560px){ .rec-form{grid-template-columns:1fr} .rec-form .rec-wide{grid-column:span 1} }
+
+  .rec-table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; margin-top:12px; background:var(--surface)}
+  .rec-table{width:100%; border-collapse:collapse; font-size:.86rem; min-width:900px}
+  .rec-table caption{caption-side:top; text-align:left; font-size:.86rem; font-weight:700; color:var(--navy);
+    padding:10px 12px 8px; background:var(--surface-2); border-bottom:1px solid var(--line-2)}
+  .rec-table th{background:#eaf3fc; color:var(--navy); font-size:.78rem; font-weight:700; text-align:center;
+    padding:9px 8px; border-bottom:2px solid #c8dcef; white-space:nowrap; vertical-align:middle}
+  .rec-table td{padding:9px 8px; border-bottom:1px solid var(--line-2); vertical-align:middle; text-align:center}
+  .rec-table td.t-left{text-align:left}
+  .rec-table tbody tr:nth-child(even){background:#f9fbfd}
+  .rec-table tbody tr:hover{background:#eef6fd}
+  .rec-table tbody tr.is-new{animation:rowIn .9s ease}
+  @keyframes rowIn{from{background:#fdf4e2}to{background:transparent}}
+  .rec-no{font-weight:700; color:var(--navy)}
+  .rec-val{display:inline-block; font-weight:700; font-size:.8rem; padding:2px 9px; border-radius:99px; border:1px solid}
+  .rec-val small{display:block; font-weight:500; font-size:.68rem; opacity:.85; white-space:nowrap}
+  .rec-num{font-variant-numeric:tabular-nums; font-weight:600}
+  .rec-num.edited{color:var(--warn)}
+  .rec-empty{padding:22px 14px; text-align:center; font-size:.88rem; color:var(--muted)}
+  .rec-actions{display:flex; gap:6px; justify-content:center; flex-wrap:wrap}
+  .rec-actions a{font-size:.78rem; font-weight:600; text-decoration:none; border-radius:6px; padding:4px 8px; border:1px solid}
+  .rec-actions .act-view{color:var(--navy); border-color:#b8cde2; background:#fff; cursor:pointer}
+  .rec-actions .act-del{color:var(--danger); border-color:#eebcb8; background:#fff; cursor:pointer}
+  .rec-actions a:hover{filter:brightness(.96)}
+
+  /* ---------- หน้าต่างดูภาพ ---------- */
+  .avatar{width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--line); vertical-align:middle}
+  .badge-status{display:inline-block; margin-left:8px; font-size:.72rem; font-weight:600; color:var(--navy);
+    background:#eaf3fc; border:1px solid #b8cde2; border-radius:99px; padding:0 9px}
+  .badge-status.off{color:var(--warn); background:#fdf4e2; border-color:#e6cd99}
+  .badge-status.busy{color:var(--accent); background:#eaf3fc; border-color:#b8cde2}
+  .warnbox{border-left:4px solid var(--warn)}
+  .sysbar h1 .badge-status{font-size:.72rem; font-weight:600; vertical-align:middle}
+  #savedList{display:none}
+  .print-only{display:none}
+  @media print{ .print-only{display:block !important} }
+  .modal{display:none; position:fixed; inset:0; background:rgba(8,20,34,.78); z-index:60; padding:18px;
+    align-items:center; justify-content:center}
+  .modal.show{display:flex}
+  .modal-in{background:#fff; border-radius:12px; max-width:min(980px,96vw); max-height:92vh; overflow:auto;
+    border:1px solid var(--line); box-shadow:0 20px 50px -18px rgba(0,0,0,.7)}
+  .modal-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px;
+    border-bottom:1px solid var(--line-2); font-size:.88rem; font-weight:600; color:var(--navy); position:sticky; top:0; background:#fff}
+  #imgModalImg{display:block; width:100%; height:auto}
+
+  .toast{
+    position:fixed; left:50%; bottom:22px; transform:translate(-50%,20px);
+    background:var(--navy-deep); color:#fff; padding:11px 20px; border-radius:10px;
+    font-size:.9rem; box-shadow:0 10px 30px -12px rgba(0,0,0,.6); opacity:0; pointer-events:none;
+    transition:.25s; z-index:50; max-width:92vw;
+  }
+  .toast.show{opacity:1; transform:translate(-50%,0)}
+  .toast.err{background:var(--danger)}
+
+  footer{width:100%; max-width:1120px; margin:24px auto 0; padding-top:14px;
+    border-top:1px solid var(--line); font-size:.78rem; color:var(--muted); text-align:center;}
+  @media print{
+    .agency, .sysbar, .modebar, .drop, .btnrow, .rec-bar, .rec-form, .override select, .override textarea,
+    footer, .toast, #saveFolder, #saveStatus, #status, .rec-actions, #recordFilter{display:none !important}
+    body{background:#fff; padding:0}
+    .card{box-shadow:none; border:1px solid #999; page-break-inside:avoid}
+    .grid{grid-template-columns:1fr 1fr}
+    .record-card{margin-top:10px}
+    .rec-table{min-width:0; font-size:.72rem}
+    .rec-table th,.rec-table td{padding:5px 4px}
+    .rec-table-wrap{overflow:visible; border:1px solid #999}
+    /* ให้เบราว์เซอร์พิมพ์สีพื้นตาราง/ป้ายระดับออกมาด้วย */
+    *{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important}
+    .rec-form, .btns, #recordFilter{display:none !important}
+    #recordCard{page-break-before:auto}
+    .rec-table thead{display:table-header-group}
+    .rec-table tr{page-break-inside:avoid}
+  }
+</style>
+
+<script>
+/* =====================================================================
+   ระบบประเมินเม็ดไขมันในตับ — ใช้แบบจำลองจริง liverV1.pt เท่านั้น
+   ไม่มีการสุ่ม/สร้างผลประเมินขึ้นเอง (ประเมินจากแบบจำลองจริงเท่านั้น)
+   เปิดด้วย start.bat (http://127.0.0.1:8000) แล้วระบบเชื่อมต่อแบบจำลองให้อัตโนมัติ
+   ===================================================================== */
+const LEVELS = ["Hight", "Medium", "Low"];
+const LEVEL_TEXT = {
+  Hight:  { short: "ตรวจพบเม็ดไขมันมาก",     color: "#0e8fae" },
+  Medium: { short: "ตรวจพบเม็ดไขมันปานกลาง", color: "#c98a12" },
+  Low:    { short: "ตรวจพบเม็ดไขมันน้อย",    color: "#b3261e" }
+};
+/* ที่อยู่เครื่องประมวลผล: อ่านพอร์ตจริงจาก <script src="live.js?port=..."> ที่เซิร์ฟเวอร์ใส่ให้
+   (ถ้าเปิดหน้าเว็บจากเซิร์ฟเวอร์โดยตรงจะใช้ origin ของหน้านั้นเป็นหลัก) */
+function resolveBases() {
+  const bases = [];
+  if (location.protocol === "http:" || location.protocol === "https:") {
+    bases.push(location.origin);
+  }
+  if (window.ProcessorBridge && window.ProcessorBridge.base) {
+    bases.push(window.ProcessorBridge.base);
+  }
+  /* เว็บไซต์ที่ตั้ง LIVER_ENGINE ไว้ (เครื่องประมวลผลอยู่คนละที่) */
+  if (window.LIVER_ENGINE) {
+    bases.push(String(window.LIVER_ENGINE).replace(/\/+$/, ""));
+  }
+  const sc = document.querySelector('script[src*="live.js"]');
+  const m = sc && String(sc.getAttribute("src")).match(/[?&]port=(\d+)/);
+  const port = m ? m[1] : "8000";
+  bases.push("http://127.0.0.1:" + port, "http://localhost:" + port);
+  return bases.filter((b, i) => b && b !== "null" && b.indexOf("file:") !== 0 && bases.indexOf(b) === i);
+}
+const API_BASES = resolveBases();
+/* ชุดที่อยู่ที่ตรวจแล้วว่าใช้ได้ — เพิ่มได้เมื่อเชื่อมต่อสำเร็จ (เช่นพอร์ตเลื่อนจาก 8000 เป็น 8001) */
+const APIDEX = API_BASES.slice();
+
+const $ = (id) => document.getElementById(id);
+const dropEl = $("drop"), fileEl = $("browse"), previewWrap = $("previewWrap"), previewEl = $("preview");
+const runBtn = $("runBtn"), clearBtn = $("clearBtn"), statusEl = $("statusLeft");
+const resultEl = $("result"), placeholderEl = $("placeholder");
+const verdictLine = $("verdictLine"), verdictTh = $("verdictTh"), confNum = $("confNum");
+const barsEl = $("bars"), detCountEl = $("detCount"), msLine = $("msLine");
+const finalLevelEl = $("finalLevel"), finalNoteEl = $("finalNote"), overrideState = $("overrideState");
+const saveBtn = $("saveImageBtn"), printBtn = $("printTableBtn"), clearSavedBtn = $("clearSavedBtn2");
+const saveStatusEl = $("statusRecord"), saveFolderEl = $("saveFolderHint");
+const saveRecordBtn = $("saveRecordBtn");
+const saveImageBtn = $("saveImageBtn");
+const toastEl = $("toast");
+const sampleIdEl = $("sampleId"), sampleNameEl = $("sampleName"), farmEl = $("farm"), inspectorEl = $("inspector"), noteEl = $("note");
+const recordCard = $("recordCard"), recordBody = $("recordBody"),
+      recordCount = $("recordCount"), recordFilter = $("recordFilter"), recordEmpty = $("recordEmpty"),
+      exportAllBtn = $("exportAllBtn"), reloadBtn = $("reloadBtn"),
+      recNoEl = $("recNo"), recLabelEl = $("recLabel"), farm2El = $("farm2"), recResultEl = $("recResult"),
+      recConfEl = $("recConf"), recInspectorEl = $("recInspector"), recordClearFormBtn = $("recordClearFormBtn");
+const modeTitle = $("modeTitle"), modeDesc = $("modeDesc"), connectBtn = $("connectBtn"), exportBtn = $("exportBtn");
+
+let currentFile = null;
+let currentData = null;
+let currentAnnotated = null;
+let originalDataUrl = null;
+let history = [];
+let apiBase = null;          // ที่อยู่เครื่องประมวลผล (app.py) ที่เชื่อมต่อได้
+let live = false;            // true = ต่อแบบจำลองจริงได้แล้ว
+let serverInfo = null;       // ข้อมูลจาก /health (ชื่อแบบจำลอง ฯลฯ)
+let serverRecords = [];      // รายการที่บันทึกไว้ในโฟลเดอร์ exports/ (ฝั่งเซิร์ฟเวอร์)
+let lastNo = 0;              // ลำดับที่ล่าสุดที่ได้รับจากเซิร์ฟเวอร์
+
+/* ---------------- ตัวช่วยทั่วไป ---------------- */
+function setStatus(msg, kind) {
+  statusEl.textContent = msg;
+  statusEl.className = "status" + (kind ? " " + kind : "");
+}
+function toast(msg, isErr) {
+  toastEl.textContent = msg;
+  toastEl.className = "toast show" + (isErr ? " err" : "");
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(() => { toastEl.className = "toast"; }, 3400);
+}
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function setMode(title, desc, kind) {
+  modeTitle.textContent = title;
+  modeDesc.textContent = desc;
+  const box = modeTitle.closest(".box");
+  if (!box) return;
+  box.classList.remove("warnbox", "okbox");
+  if (kind) box.classList.add(kind);
+}
+
+/* ---------------- ตรวจหาเครื่องประมวลผล (แบบจำลองจริง) ---------------- */
+const HEALTH_TIMEOUT = 3500;
+async function probe(base) {
+  const url = base.replace(/\/$/, "") + "/health";
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), HEALTH_TIMEOUT);
+  try {
+    const res = await fetch(url, { signal: ctl.signal, cache: "no-store" });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return (j && j.ok) ? j : null;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+async function detectServer(quiet) {
+  if (!window.fetch) { apiBase = null; live = false; applyMode(quiet); return false; }
+  let info = null;
+  for (const base of APIDEX) {
+    if (!base || base === "null") continue;
+    info = await probe(base);
+    if (info) { apiBase = base.replace(/\/$/, ""); live = true; break; }
+  }
+  if (!live) { apiBase = null; info = null; }
+  serverInfo = info;
+  applyMode(quiet);
+  return live;
+}
+/* คู่มือติดตั้งบนเครื่องใหม่ (กดจากแถบสถานะด้านบนได้ทุกสถานะ) */
+(function setupHelp() {
+  const btn = $("helpBtn"), box = $("helpBox"), close = $("helpClose");
+  if (!btn || !box) return;
+  if (close) close.addEventListener("click", () => { box.style.display = "none"; });
+  btn.addEventListener("click", () => { box.style.display = box.style.display === "none" ? "block" : "none"; });
+})();
+
+/* ฟังสัญญาณจากตัวเฝ้าเซิร์ฟเวอร์ (app.py) — เชื่อมต่ออัตโนมัติเมื่อเครื่องประมวลผลพร้อม */
+document.addEventListener("processor:online", (e) => {
+  const info = (e && e.detail) || null;
+  if (info && info.ok) {
+    serverInfo = info;
+    live = true;
+    const b = String(info.__base || (window.ProcessorBridge && window.ProcessorBridge.base) || API_BASES[0]).replace(/\/$/, "");
+    if (b && APIDEX.indexOf(b) < 0) APIDEX.unshift(b);
+    apiBase = b;
+  } else { detector(); return; }
+  applyMode(true);
+  setStatus("เชื่อมต่อเครื่องประมวลผลแล้ว — แบบจำลอง " + (serverInfo.model || "liverV1.pt") + " พร้อมใช้งาน", "ok");
+  if (currentFile) runBtn.disabled = false;
+});
+document.addEventListener("processor:status", (e) => {
+  const st = (e && e.detail) || null;
+  if (st && !st.ok && live) detector();
+});
+function detector() {
+  live = false; apiBase = null;
+  applyMode(true);
+  if (currentFile) {
+    setStatus("การเชื่อมต่อเครื่องประมวลผลขาดหาย — ระบบจะเชื่อมต่อใหม่ให้อัตโนมัติเมื่อพร้อม", "err");
+  }
+}
+function applyMode(quiet) {
+  const bs = $("serverBadge");
+  if (live && serverInfo && serverInfo.lib_ok === false) {
+    /* เซิร์ฟเวอร์ตอบ แต่เครื่องนี้ไม่มีตัววิเคราะห์ (torch/ultralytics) -> วิเคราะห์ไม่ได้ */
+    setMode("เชื่อมต่อเซิร์ฟเวอร์ได้ แต่เครื่องนี้ยังวิเคราะห์ภาพไม่ได้",
+      (serverInfo.lib_hint || "เครื่องนี้ยังไม่มี torch + ultralytics") +
+      " · ตัวตรวจละเอียด: " + (serverInfo.lib_note || "-") +
+      " — ปิดหน้าต่างนี้แล้วดับเบิลคลิก “ตรวจสอบระบบ.bat” เพื่อให้ระบบบอกวิธีแก้ทีละข้อ " +
+      "หรืออ่าน README-ติดตั้งเครื่องใหม่.txt (ต้องคัดลอกโฟลเดอร์ runtime\\python311 มาวางข้าง start.bat)", "warnbox");
+    connectBtn.style.display = "none";
+    exportBtn.style.display = "none";
+    reloadBtn.style.display = "none";
+    if (bs) { bs.className = "badge-status off"; bs.textContent = "เซิร์ฟเวอร์ตอบ แต่ไม่มีตัววิเคราะห์ (torch/ultralytics)"; }
+    return;
+  }
+  if (live && serverInfo && serverInfo.model_file === false) {
+    /* เซิร์ฟเวอร์มีตัววิเคราะห์ แต่ไม่พบไฟล์แบบจำลอง */
+    setMode("เชื่อมต่อเซิร์ฟเวอร์ได้ แต่ไม่พบไฟล์แบบจำลอง liverV1.pt",
+      "คัดลอกไฟล์ liverV1.pt (ประมาณ 6 MB) มาวางไว้ข้าง app.py แล้วปิดหน้าต่าง start.bat เปิดใหม่ " +
+      "· ถ้าคัดลอกผ่าน USB/อีเมล ไฟล์อาจถูกตัดขนาด ให้เทียบขนาดกับเครื่องต้นทาง", "warnbox");
+    connectBtn.style.display = "none";
+    exportBtn.style.display = "none";
+    reloadBtn.style.display = "none";
+    if (bs) { bs.className = "badge-status off"; bs.textContent = "ไม่พบไฟล์แบบจำลอง liverV1.pt"; }
+    return;
+  }
+  if (live) {
+    const modelName = (serverInfo && serverInfo.model) || "liverV1.pt";
+    setMode("โหมดใช้งานจริง — เชื่อมต่อแบบจำลอง " + modelName + " แล้ว",
+      "กำลังประมวลผลด้วยแบบจำลอง " + modelName + " ที่ " + apiBase +
+      " · กด “ประเมินภาพ” เพื่อให้แบบจำลองวิเคราะห์ภาพจริง แล้วตรวจทานและยืนยันผลก่อนบันทึก", "okbox");
+    connectBtn.style.display = "none";
+    exportBtn.style.display = "inline-block";
+    reloadBtn.style.display = "inline-block";
+    if (bs) { bs.className = "badge-status"; bs.textContent = "พร้อมใช้งาน · แบบจำลอง " + modelName; }
+    if (!quiet) toast("เชื่อมต่อเครื่องประมวลผลสำเร็จ — พร้อมใช้งานจริง");
+    if (currentFile) runBtn.disabled = false;
+    try { loadServerRecords(true); } catch (e) { /* ไม่ให้ล้มทั้งหน้า */ }
+  } else {
+    setMode("ยังไม่เชื่อมต่อเครื่องประมวลผล — ระบบไม่แสดงผลประเมินในสถานะนี้",
+      "ระบบประเมินด้วยแบบจำลองจริงเท่านั้น จึงไม่สร้างผลขึ้นเอง — เครื่องประมวลผลยังไม่ทำงาน: " +
+      "เปิดด้วย start.bat (หน้าต่างดำต้องเปิดค้างไว้) แล้วระบบจะเชื่อมต่อให้เองภายในไม่กี่วินาที " +
+      "· ถ้าย้ายมาเครื่องใหม่แล้วยังต่อไม่ได้ กด “คู่มือติดตั้งเครื่องใหม่” ด้านขวา " +
+      "หรือดับเบิลคลิก ตรวจสอบระบบ.bat เพื่อดูว่าขาดอะไร", "warnbox");
+    connectBtn.style.display = "inline-block";
+    exportBtn.style.display = "none";
+    reloadBtn.style.display = "none";
+    if (bs) { bs.className = "badge-status off"; bs.textContent = "ยังไม่เชื่อมต่อเครื่องประมวลผล"; }
+  }
+}
+/* ตรวจซ้ำเป็นระยะเมื่อยังหลุดการเชื่อมต่อ (ไม่รบกวนผู้ใช้) */
+async function watchServer() {
+  if (live) return;
+  const ok = await detectServer(true);
+  if (ok) {
+    setStatus("เชื่อมต่อเครื่องประมวลผลเรียบร้อย — พร้อมประเมินภาพจริง", "ok");
+    if (currentFile) runBtn.disabled = false;
+  }
+}
+/* ตัวแปรที่ผู้ใช้เลือกได้ */
+let exportImage = null;   /* ภาพผลประเมินเพื่อพิมพ์/บันทึก */
+function setExportImage(src) {
+  exportImage = src || null;
+  const el = $("printImage");
+  if (el) { if (exportImage) { el.src = exportImage; el.style.display = "block"; } else { el.removeAttribute("src"); el.style.display = "none"; } }
+}
+connectBtn.addEventListener("click", async () => {
+  connectBtn.disabled = true;
+  connectBtn.textContent = "กำลังตรวจสอบ…";
+  toast("กำลังค้นหาเครื่องประมวลผล…");
+  const ok = await detectServer();
+  connectBtn.disabled = false;
+  connectBtn.textContent = "เชื่อมต่อเครื่องประมวลผล";
+  if (!ok) {
+    toast("ยังไม่พบเครื่องประมวลผล — กรุณาเปิด start.bat ก่อน", true);
+    setStatus("ยังไม่พบเครื่องประมวลผล (app.py) — ระบบไม่แสดงผลประเมินจนกว่าจะเชื่อมต่อได้", "err");
+  }
+});
+
+/* ---------------- นำเข้าภาพ ---------------- */
+dropEl.addEventListener("click", () => fileEl.click());
+dropEl.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileEl.click(); } });
+["dragenter", "dragover"].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.remove("over"); }));
+dropEl.addEventListener("drop", e => {
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) pickFile(f);
+});
+fileEl.addEventListener("change", () => { if (fileEl.files[0]) pickFile(fileEl.files[0]); });
+
+function pickFile(file) {
+  if (!file.type || !file.type.startsWith("image/")) { setStatus("ไฟล์ที่เลือกไม่ใช่รูปภาพ", "err"); return; }
+  if (file.size > 30 * 1024 * 1024) { setStatus("ไฟล์ใหญ่เกิน 30 MB", "err"); return; }
+  currentFile = file;
+  currentData = null;
+  currentAnnotated = null;
+  const fr = new FileReader();
+  fr.onload = () => {
+    originalDataUrl = fr.result;
+    previewEl.onerror = () => { previewEl.onerror = null; previewEl.src = originalDataUrl; };
+    previewEl.src = originalDataUrl;
+    previewWrap.classList.add("show");
+    dropEl.classList.add("hide");
+    runBtn.disabled = false;
+    runBtn.textContent = "ประเมินภาพ";
+    clearBtn.disabled = false;
+    resultEl.classList.remove("show");
+    placeholderEl.style.display = "block";
+    saveBtn.disabled = true;
+    printBtn.disabled = true;
+    setExportImage(null);
+    if (!sampleNameEl.value) sampleNameEl.value = file.name.replace(/\.[^.]+$/, "");
+    if (live) {
+      setStatus("พร้อมประเมิน: " + file.name + " (" + Math.round(file.size / 1024) + " KB)", "ok");
+    } else {
+      setStatus("พร้อมประเมิน: " + file.name + " — กำลังตรวจหาเครื่องประมวลผล…", "busy");
+      detectServer(true).then(ok => {
+        if (ok) setStatus("พร้อมประเมิน: " + file.name + " (" + Math.round(file.size / 1024) + " KB)", "ok");
+        else setStatus("ยังไม่เชื่อมต่อเครื่องประมวลผล — เปิด start.bat แล้วกด “ประเมินภาพ” อีกครั้ง", "err");
+      });
+    }
+  };
+  fr.onerror = () => setStatus("อ่านไฟล์ภาพไม่สำเร็จ", "err");
+  fr.readAsDataURL(file);
+}
+
+function resetAll() {
+  currentFile = null; currentData = null; currentAnnotated = null; originalDataUrl = null;
+  fileEl.value = "";
+  previewEl.removeAttribute("src");
+  previewWrap.classList.remove("show");
+  dropEl.classList.remove("hide");
+  runBtn.disabled = true;
+  runBtn.textContent = "ประเมินภาพ";
+  clearBtn.disabled = true;
+  saveBtn.disabled = true;
+  printBtn.disabled = true;
+  resultEl.classList.remove("show");
+  placeholderEl.style.display = "block";
+  overrideState.textContent = "";
+  setStatus("ยังไม่มีภาพในระบบ");
+}
+clearBtn.addEventListener("click", resetAll);
+
+/* ---------------- ประเมินภาพ ---------------- */
+runBtn.addEventListener("click", async () => {
+  if (!currentFile) return;
+  if (!apiBase) {
+    setStatus("กำลังตรวจหาเครื่องประมวลผล…", "busy");
+    const ok = await detectServer(true);
+    if (!ok) {
+      setStatus("ยังไม่เชื่อมต่อเครื่องประมวลผล — กรุณาเปิด start.bat แล้วกด “ประเมินภาพ” อีกครั้ง " +
+        "(ระบบจะไม่แสดงผลประเมินจนกว่าจะต่อแบบจำลองได้)", "err");
+      toast("ไม่พบเครื่องประมวลผล — ยังไม่สามารถประเมินภาพได้", true);
+      return;
+    }
+  }
+  runBtn.disabled = true; clearBtn.disabled = true;
+  runBtn.textContent = "กำลังประเมิน…";
+  setStatus("กำลังประเมินภาพ… (ครั้งแรกอาจใช้เวลาสักครู่เพื่อโหลดแบบจำลอง)", "busy");
+  const t0 = performance.now();
+  try {
+    const res = await fetch(apiBase + "/predict", { method: "POST", body: currentFile });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || ("HTTP " + res.status));
+    data.fileName = currentFile.name;
+    data.modelName = (serverInfo && serverInfo.model) || "liverV1.pt";
+    data.evaluatedAt = new Date().toISOString();
+    currentData = data;
+    currentAnnotated = data.image ? "data:image/jpeg;base64," + data.image : null;
+    renderResult(data, Math.round(performance.now() - t0));
+    if (currentAnnotated) {
+      previewEl.src = currentAnnotated;
+      setExportImage(currentAnnotated);
+    }
+    saveBtn.disabled = false;
+    saveRecordBtn.disabled = false;
+    fillRecordForm(data);
+    syncRecordForm();
+    try { recordCard.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { /* ข้ามไป */ }
+    if (!data.verdict || !(data.detections || []).length) {
+      setStatus("ประมวลผลเสร็จ (" + Math.round(performance.now() - t0) +
+        " ms) — แบบจำลองไม่พบเม็ดไขมันในภาพนี้ ต้องเพิ่มความมั่นใจไม่ได้: ให้ตรวจทานภาพด้วยตาและบันทึกผลตามที่ตรวจพบ", "err");
+    } else {
+      setStatus("ประเมินเสร็จสิ้นด้วยแบบจำลองจริง (" + Math.round(performance.now() - t0) +
+        " ms) — กรุณาตรวจทานผลก่อนบันทึก", "ok");
+    }
+  } catch (err) {
+    const m = String(err && err.message || err);
+    setStatus("ประเมินไม่สำเร็จ: " + m + " — ถ้าขึ้นว่า Failed to fetch ให้ตรวจว่าเซิร์ฟเวอร์ยังทำงาน " +
+      "(หน้าต่าง start.bat เปิดค้างอยู่) แล้วกด “เชื่อมต่อเครื่องประมวลผล”", "err");
+    toast("ประเมินไม่สำเร็จ: " + m, true);
+  } finally {
+    runBtn.disabled = false; clearBtn.disabled = false;
+    runBtn.textContent = "ประเมินภาพ";
+  }
+});
+
+function renderResult(data, ms) {
+  placeholderEl.style.display = "none";
+  resultEl.classList.add("show");
+  const dets = data.detections || [];
+  detCountEl.textContent = dets.length;
+  msLine.textContent = ms;
+
+  if (!data.verdict || !dets.length) {
+    verdictLine.innerHTML = '<span class="tag t-m">ไม่สามารถประเมินได้</span>';
+    verdictTh.textContent = "ไม่พบลักษณะเม็ดไขมันที่แบบจำลองรู้จักในภาพนี้";
+    verdictTh.style.color = "var(--warn)";
+    confNum.textContent = "0.0%";
+    barsEl.innerHTML = LEVELS.map(n =>
+      '<div class="brow"><div class="btop"><span>' + esc(n) + " — " + esc(LEVEL_TEXT[n].short) +
+      "</span><b>0.0%</b></div><div class=\"bar\"><i style=\"width:0%;background:" + LEVEL_TEXT[n].color + "\"></i></div></div>"
+    ).join("");
+    overrideState.className = "ov-state";
+    overrideState.textContent = "ยังไม่มีผลจากแบบจำลองให้ยืนยัน — เจ้าหน้าที่สามารถเลือกผลที่ยืนยันได้เองจากช่องด้านบน";
+    finalLevelEl.value = "Medium";
+    finalNoteEl.value = "";
+    fillRecordForm(null);
+    return;
+  }
+
+  const lv = data.verdict;
+  const color = LEVEL_TEXT[lv].color;
+  const pct = Number(data.confidence_pct || 0);
+  const levelPct = data.level_pct || {};
+
+  verdictLine.innerHTML = '<span class="tag" style="color:' + color + ";border-color:" + color +
+    ";background:" + color + "14\">" + esc(lv) + "</span>";
+  verdictTh.textContent = LEVEL_TEXT[lv].short;
+  verdictTh.style.color = color;
+  confNum.textContent = pct.toFixed(1) + "%";
+
+  barsEl.innerHTML = LEVELS.map(n => {
+    const v = Number(levelPct[n] !== undefined ? levelPct[n] : 0);
+    const isWin = n === lv;
+    return '<div class="brow"><div class="btop"><span>' + esc(n) + " — " + esc(LEVEL_TEXT[n].short) +
+      (isWin ? '<span class="win-note">ผลจากระบบ</span>' : "") + "</span><b>" + v.toFixed(1) + "%</b></div>" +
+      '<div class="bar"><i style="width:' + v + "%;background:" + LEVEL_TEXT[n].color +
+      ";opacity:" + (isWin ? 1 : 0.45) + '"></i></div></div>';
+  }).join("");
+
+  finalLevelEl.value = lv;
+  finalNoteEl.value = "";
+  overrideState.className = "ov-state";
+  overrideState.textContent = "ผลที่ยืนยันตรงกับผลของระบบ";
+  fillRecordForm(data);
+  syncRecordForm();
+}
+
+/* ---------------- ตรวจทาน / แก้ไขผล ---------------- */
+function checkOverride() {
+  const modelLv = currentData && currentData.verdict ? currentData.verdict : "";
+  const final = finalLevelEl.value;
+  recResultEl.value = final;
+  syncRecordForm();
+  if (!modelLv) {
+    overrideState.className = "ov-state";
+    overrideState.textContent = "ยังไม่มีผลจากแบบจำลอง (หรือแบบจำลองไม่พบเม็ดไขมันในภาพ) — " +
+      "ผลที่บันทึกจะเป็นผลที่เจ้าหน้าที่ตรวจยืนยันเอง";
+    return;
+  }
+  if (final === modelLv) {
+    overrideState.className = "ov-state";
+    overrideState.textContent = "ผลที่ยืนยันตรงกับผลของระบบ";
+  } else {
+    overrideState.className = "ov-state";
+    overrideState.textContent = "แก้ไขผล: ระบบประเมิน " + modelLv + " (" + LEVEL_TEXT[modelLv].short +
+      ") → เจ้าหน้าที่ยืนยัน " + final + " (" + LEVEL_TEXT[final].short + ")";
+  }
+}
+finalLevelEl.addEventListener("change", checkOverride);
+finalNoteEl.addEventListener("input", () => {
+  if (!currentData || !currentData.verdict) return;
+  if (finalLevelEl.value !== currentData.verdict && !finalNoteEl.value.trim()) {
+    overrideState.textContent = "กรุณาระบุเหตุผลประกอบการแก้ไขผล";
+  }
+});
+
+/* ---------------- บันทึกผล + ตารางบันทึกผล ---------------- */
+function confOf(level) {
+  if (!currentData || !currentData.verdict) return null;
+  if (level === currentData.verdict) return Number(currentData.confidence_pct || 0);
+  const lp = currentData.level_pct || {};
+  const v = lp[level];
+  return (v === undefined || v === null) ? null : Number(v);
+}
+/* ผลที่ใช้บันทึก: ถ้ามีผลจากแบบจำลองใช้ค่านั้น ถ้าไม่มีต้องให้เจ้าหน้าที่เลือกเอง (ไม่เดาให้) */
+function chosenResult() {
+  const fromForm = (recResultEl.value || "").trim();
+  if (fromForm) return fromForm;
+  if (currentData && currentData.verdict) return currentData.verdict;
+  return "";
+}
+
+function buildRecord() {
+  const modelLv = currentData && currentData.verdict ? currentData.verdict : null;
+  const final = chosenResult() || (finalLevelEl.value || "");
+  const conf = confOf(final);
+  const edited = !!modelLv && final !== modelLv;
+  const label = (recLabelEl.value || sampleIdEl.value || "").trim();
+  return {
+    no: Number(recNoEl.value) || null,
+    savedAt: new Date().toISOString(),
+    label: label,
+    sampleId: label,
+    title: label || ((currentFile && currentFile.name) || "sample").replace(/\.[^.]+$/, ""),
+    fileName: (currentFile && currentFile.name) || "",
+    farm: (farm2El.value || farmEl.value || "").trim(),
+    sampleName: "",
+    inspector: (recInspectorEl.value || inspectorEl.value || "").trim(),
+    note: noteEl.value.trim(),
+    modelName: (currentData && currentData.modelName) || (serverInfo && serverInfo.model) || "",
+    evaluatedAt: (currentData && currentData.evaluatedAt) || "",
+    autoEvaluated: !!currentData,
+    modelResult: modelLv,
+    modelConfidence: (modelLv && conf !== null) ? Number(currentData.confidence_pct || 0) : null,
+    finalResult: final,
+    finalConfidence: conf,
+    overrideNote: finalNoteEl.value.trim(),
+    edited: edited,
+    detections: (currentData && currentData.detections) || [],
+    imageDataUrl: currentAnnotated || originalDataUrl
+  };
+}
+
+/* เติมค่าจากผลการประเมินลงในฟอร์มบันทึกผล */
+function fillRecordForm(data) {
+  if (!data || !data.verdict) {
+    /* ไม่มีผลจากแบบจำลอง: ไม่เดาผลให้ แต่ให้เจ้าหน้าที่เลือกเอง */
+    if (!recResultEl.value) recResultEl.selectedIndex = 0;
+    recConfEl.value = "—";
+    recConfEl.title = "ไม่มีความเชื่อมั่นจากแบบจำลอง (ไม่ได้ประเมินด้วยแบบจำลอง)";
+    return;
+  }
+  recResultEl.value = data.verdict;
+  const c = confOf(data.verdict);
+  recConfEl.value = (c === null ? "—" : c.toFixed(1) + "%");
+  recConfEl.title = "";
+}
+
+function pickCurrentResult() {
+  if (!currentData || !currentData.verdict) {
+    toast("ยังไม่มีผลจากแบบจำลอง — เลือกผลตรวจในช่อง ‘ผลตรวจที่ได้’ ได้เอง", true);
+    recResultEl.focus();
+    return;
+  }
+  recResultEl.value = currentData.verdict;
+  finalLevelEl.value = currentData.verdict;
+  fillRecordForm(currentData);
+  syncRecordForm();
+  checkOverride();
+  finalNoteEl.value = "";
+  toast("ใช้ผลจากแบบจำลอง: " + currentData.verdict);
+}
+
+function syncRecordForm() {
+  const lv = recResultEl.value;
+  const c = confOf(lv);
+  recConfEl.value = (c === null)
+    ? "—"
+    : c.toFixed(1) + "%";
+  recConfEl.title = (c === null) ? "ไม่มีความเชื่อมั่นจากแบบจำลองสำหรับผลนี้" : "";
+  if (!recLabelEl.value.trim() && sampleIdEl.value.trim()) recLabelEl.value = sampleIdEl.value.trim();
+  if (!farm2El.value.trim() && farmEl.value.trim()) farm2El.value = farmEl.value.trim();
+  if (!recInspectorEl.value.trim() && inspectorEl.value.trim()) recInspectorEl.value = inspectorEl.value.trim();
+}
+
+/* เก็บฟอร์มที่กรอกไว้ กรณีรีเฟรชหน้า */
+const FORM_KEY = "liverRecordFormV1";
+function persistForm() {
+  try {
+    localStorage.setItem(FORM_KEY, JSON.stringify({
+      label: recLabelEl.value, farm: farm2El.value, result: recResultEl.value,
+      inspector: recInspectorEl.value, note: noteEl.value
+    }));
+  } catch (e) { /* ไม่มีพื้นที่เก็บ — ข้ามไป */ }
+}
+function restoreForm() {
+  try {
+    const raw = localStorage.getItem(FORM_KEY);
+    if (!raw) return;
+    const f = JSON.parse(raw) || {};
+    if (f.label) recLabelEl.value = f.label;
+    if (f.farm) farm2El.value = f.farm;
+    if (f.result) recResultEl.value = f.result;
+    if (f.inspector) recInspectorEl.value = f.inspector;
+    if (f.note) noteEl.value = f.note;
+  } catch (e) { /* ข้ามไป */ }
+}
+[recLabelEl, farm2El, recResultEl, recInspectorEl].forEach(el => el.addEventListener("input", () => {
+  if (el === recResultEl) { syncRecordForm(); persistForm(); return; }
+  if (el === recLabelEl) sampleIdEl.value = recLabelEl.value;
+  if (el === farm2El) farmEl.value = farm2El.value;
+  if (el === recInspectorEl) inspectorEl.value = recInspectorEl.value;
+  persistForm();
+}));
+recResultEl.addEventListener("change", () => {
+  finalLevelEl.value = recResultEl.value;
+  checkOverride();
+  syncRecordForm();
+  persistForm();
+});
+recordClearFormBtn.addEventListener("click", () => {
+  recLabelEl.value = ""; farm2El.value = ""; recInspectorEl.value = ""; noteEl.value = "";
+  sampleIdEl.value = ""; farmEl.value = ""; inspectorEl.value = "";
+  finalNoteEl.value = "";
+  if (currentData && currentData.verdict) {
+    recResultEl.value = currentData.verdict;
+    finalLevelEl.value = currentData.verdict;
+  } else {
+    recResultEl.selectedIndex = 0;   /* ไม่เดาผลให้ */
+    finalLevelEl.selectedIndex = 0;
+  }
+  fillRecordForm(currentData);
+  checkOverride();
+  persistForm();
+  toast("ล้างฟอร์มแล้ว — ลำดับที่จะออกอัตโนมัติเมื่อบันทึก");
+  recLabelEl.focus();
+});
+saveBtn.addEventListener("click", async () => {
+  const submitBtn = saveBtn; /* ปุ่มบันทึกผลการตรวจ (ฟอร์มด้านบน) */
+  const rec = buildRecord();
+  if (!rec.finalResult) {
+    recResultEl.focus();
+    toast("กรุณาเลือก ‘ผลตรวจที่ได้’ (Hight / Medium / Low) ก่อนบันทึก — ระบบไม่เดาผลให้", true);
+    return;
+  }
+  if (!rec.label) {
+    recLabelEl.focus();
+    toast("กรุณากรอก Label ตัวอย่างก่อนบันทึก", true);
+    return;
+  }
+  if (!rec.farm) {
+    farm2El.focus();
+    toast("กรุณากรอกฟาร์มที่มาของตัวอย่าง", true);
+    return;
+  }
+  if (!rec.inspector) {
+    recInspectorEl.focus();
+    toast("กรุณากรอกชื่อผู้ตรวจวิเคราะห์", true);
+    return;
+  }
+  submitBtn.disabled = true; /* ปุ่มบันทึกผลการตรวจ (ฟอร์มด้านบน) */
+  setSaveStatus("กำลังบันทึก…", "busy");
+
+  /* 1) พยายามบันทึกภาพผลประเมิน + รายงานลงเซิร์ฟเวอร์ (exports/) */
+  let serverMsg = "", serverFile = "", serverImage = "";
+  try {
+    if (apiBase) {
+      const res = await fetch(apiBase + "/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: rec.imageDataUrl || "",
+          title: rec.label,
+          sampleName: rec.label,
+          sampleId: rec.sampleId,
+          farm: rec.farm,
+          inspector: rec.inspector,
+          note: rec.note,
+          modelResult: rec.modelResult || "",
+          modelConfidence: rec.modelConfidence,
+          finalResult: rec.finalResult,
+          finalConfidence: rec.finalConfidence,
+          overrideNote: rec.overrideNote,
+          edited: rec.edited,
+          detections: rec.detections
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || ("HTTP " + res.status));
+      rec.no = data.no;
+      rec.savedAt = data.saved_at || rec.savedAt;
+      serverFile = data.report_file;
+      serverImage = data.image_file;
+      lastNo = Math.max(lastNo, Number(data.no) || 0);
+      serverMsg = " บันทึกไฟล์ลงโฟลเดอร์ exports แล้ว: " + data.image_file + " และ " + data.report_file;
+      saveFolderEl.textContent = "โฟลเดอร์รายงาน: " + data.folder;
+    } else {
+      lastNo = Math.max(lastNo, ...history.map(h => Number(h.no) || 0)) + 1;
+      rec.no = lastNo;
+    }
+  } catch (err) {
+    lastNo = Math.max(lastNo, ...history.map(h => Number(h.no) || 0)) + 1;
+    rec.no = lastNo;
+    toast("บันทึกฝั่งเซิร์ฟเวอร์ไม่สำเร็จ: " + err.message + " — เก็บในเบราว์เซอร์แทน", true);
+  }
+  if (!rec.no) { lastNo = Math.max(lastNo, ...history.map(h => Number(h.no) || 0)) + 1; rec.no = lastNo; }
+  rec.serverFile = serverFile;
+  rec.serverImage = serverImage;
+
+  /* 2) เก็บลงตารางในเบราว์เซอร์ (และบนหน้าจอด้านล่าง) */
+  history.unshift(rec);
+  persistHistory();
+  renderRecordTable(rec.savedAt);
+  /* 2.1) รีเฟรชจากฐานข้อมูลกลาง เพื่อให้ตารางตรงกับเครื่องอื่น */
+  loadServerRecords(true);
+  setSaveStatus("บันทึกลำดับที่ " + rec.no + " แล้ว (" + fmtDate(rec.savedAt) + ")" + serverMsg, "ok");
+  submitBtn.disabled = false;
+  toast("บันทึกผลการตรวจลำดับที่ " + rec.no + " เรียบร้อย — ดูได้ในตารางด้านล่าง");
+
+  /* 3) เตรียมฟอร์มสำหรับรายการถัดไป */
+  recNoEl.value = "";
+  recLabelEl.value = "";
+  sampleIdEl.value = "";
+  finalNoteEl.value = "";
+  persistForm();
+  recLabelEl.focus();
+});
+
+function setSaveStatus(msg, kind) {
+  saveStatusEl.textContent = msg;
+  saveStatusEl.className = "status" + (kind ? " " + kind : "");
+}
+
+/* ---------------- ที่เก็บข้อมูล (localStorage) ---------------- */
+const HISTORY_KEY = "liverFatEvalRecordsV3";   // ตารางบันทึกผล
+const IMAGE_KEY = "liverFatEvalImagesV1";      // ภาพผลประเมินแยกไว้ (กันพื้นที่หลักเต็ม)
+const IMAGE_SAVE_LIMIT = 8;                    // เก็บภาพในเบราว์เซอร์สูงสุดกี่รายการ
+
+function persistHistory() {
+  const plain = history.map(h => {
+    const c = Object.assign({}, h);
+    delete c.imageDataUrl;
+    return c;
+  });
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(plain.slice(0, 300)));
+  } catch (e) { /* พื้นที่เต็ม */ }
+
+  /* เก็บภาพเฉพาะรายการใหม่สุด — ถ้าเต็มให้ลดจำนวนลง */
+  try {
+    const imgs = {};
+    let n = 0;
+    for (const h of history) {
+      if (h.imageDataUrl && n < IMAGE_SAVE_LIMIT) { imgs[h.savedAt] = h.imageDataUrl; n++; }
+    }
+    localStorage.setItem(IMAGE_KEY, JSON.stringify(imgs));
+  } catch (e) {
+    try { localStorage.removeItem(IMAGE_KEY); } catch (e2) { /* ข้ามไป */ }
+  }
+}
+
+async function loadHistory() {
+  /* ถ้าเชื่อมต่อเครื่องประมวลผลได้ ให้ใช้ฐานข้อมูลกลางเป็นหลัก
+     (เปิดจากเครื่องไหน/เบราว์เซอร์ไหนก็เห็นรายการเดียวกัน) — อ่านไม่สำเร็จจึงถอยไปใช้ localStorage */
+  history = [];
+  if (window.ProcessorBridge && ProcessorBridge.base) apiBase = ProcessorBridge.base;
+  if (apiBase) {
+    try {
+      const res = await fetch(apiBase + "/records?limit=500", { cache: "no-store" });
+      const j = await res.json();
+      if (res.ok && j.ok) {
+        serverRecords = j.records || [];
+        history = serverRecords.map(r => ({
+          no: r.no, savedAt: r.saved_at, label: r.sample_label,
+          sampleId: r.sample_code || r.sample_label, sampleName: r.sample_name,
+          farm: r.farm, inspector: r.inspector, note: r.note,
+          modelResult: r.model_result, modelConfidence: r.model_confidence,
+          finalResult: r.final_result, finalConfidence: r.final_confidence,
+          edited: !!r.edited, overrideNote: r.override_note, detections: [],
+          serverImage: r.image_file || "", serverFile: r.report_file || "", dbId: r.id
+        }));
+        lastNo = history.reduce((m, h) => Math.max(m, Number(h.no) || 0), 0);
+        return;
+      }
+    } catch (e) { /* ใช้ข้อมูลในเบราว์เซอร์แทน */ }
+  }
+  let local = [];
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    local = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(local)) local = [];
+  } catch (e) { local = []; }
+  try {
+    const rawImg = localStorage.getItem(IMAGE_KEY);
+    const imgs = rawImg ? JSON.parse(rawImg) : {};
+    local.forEach(h => { if (imgs[h.savedAt]) h.imageDataUrl = imgs[h.savedAt]; });
+  } catch (e) { /* ไม่มีภาพเก็บไว้ */ }
+  if (!apiBase) history = local;
+  lastNo = history.reduce((m, h) => Math.max(m, Number(h.no) || 0), 0);
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso || "-";
+  const p = (n) => String(n).padStart(2, "0");
+  return p(d.getDate()) + "/" + p(d.getMonth() + 1) + "/" + (d.getFullYear() + 543) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+function tagClassUnused(lv) { return lv === "Hight" ? "t-h" : lv === "Medium" ? "t-m" : "t-l"; }
+function levelText(lv) {
+  if (lv === "Hight") return "ตรวจพบเม็ดไขมันมาก";
+  if (lv === "Medium") return "ตรวจพบเม็ดไขมันปานกลาง";
+  if (lv === "Low") return "ตรวจพบเม็ดไขมันน้อย";
+  return "-";
+}
+function levelColor(lv) {
+  if (lv === "Hight") return "#0e8fae";
+  if (lv === "Medium") return "#c98a12";
+  if (lv === "Low") return "#b3261e";
+  return "#5b7288";
+}
+/* ---------------- วาดตารางบันทึกผล ---------------- */
+function renderRecordTable(highlightTs) {
+  /* รวมรายการที่บันทึกไว้ในเครื่อง (เซิร์ฟเวอร์) เข้ากับรายการในเบราว์เซอร์ โดยกันซ้ำด้วยชื่อไฟล์รายงาน */
+  const seen = new Set(history.map(h => h.serverFile).filter(Boolean));
+  let rows = history.slice();
+  serverRecords.forEach(r => {
+    if (r.report && seen.has(r.report)) return;
+    rows.push({
+      no: r.no, savedAt: r.saved_at || new Date((r.time || 0) * 1000).toISOString(),
+      label: r.sample_name || r.sample_id || "-", sampleId: r.sample_id || "",
+      farm: r.farm || "", inspector: r.inspector || "",
+      finalResult: r.final_result || "", finalConfidence: r.final_confidence_pct,
+      edited: !!r.edited, modelResult: "", modelConfidence: null,
+      serverFile: r.report, serverImage: r.image, imageDataUrl: null, fromServer: true
+    });
+  });
+
+  const q = (recordFilter.value || "").trim().toLowerCase();
+  if (q) {
+    rows = rows.filter(r => [r.label, r.sampleId, r.farm, r.inspector, r.finalResult]
+      .join(" ").toLowerCase().indexOf(q) >= 0);
+  }
+  rows.sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+
+  recordCount.textContent = rows.length + " รายการ";
+  clearSavedBtn.disabled = history.length === 0 && serverRecords.length === 0;
+  printBtn.disabled = rows.length === 0;
+  recordEmpty.style.display = rows.length ? "none" : "block";
+
+  recordBody.innerHTML = rows.map((r, i) => {
+    const lv = r.finalResult;
+    const conf = (r.finalConfidence === null || r.finalConfidence === undefined || r.finalConfidence === "")
+      ? "—" : Number(r.finalConfidence).toFixed(1);
+    const editedTag = r.edited ? '<div class="rec-num edited" style="font-size:.7rem;font-weight:600">* เจ้าหน้าที่แก้ไขผล</div>' : "";
+    const isNew = highlightTs && r.savedAt === highlightTs ? " class=\"is-new\"" : "";
+    return '<tr' + isNew + ' data-row="' + i + '">' +
+      '<td class="rec-no">' + esc(r.no || (i + 1)) + "</td>" +
+      '<td><b>' + esc(r.label || r.sampleId || "-") + "</b></td>" +
+      '<td class="t-left">' + esc(r.farm || "-") + "</td>" +
+      '<td><span class="rec-val" style="color:' + levelColor(lv) + ";border-color:" + levelColor(lv) +
+        ";background:" + levelColor(lv) + '14">' + esc(lv || "-") +
+        "<small>" + esc(levelText(lv)) + "</small></span></td>" +
+      '<td class="rec-num">' + esc(conf) + (conf === "—" ? "" : " %") + "</td>" +
+      '<td class="t-left">' + esc(r.inspector || "-") + editedTag + "</td>" +
+      '<td style="font-size:.78rem;color:var(--muted)">' + esc(fmtDate(r.savedAt)) + "</td>" +
+      '<td><div class="rec-actions">' +
+        '<a class="act-view" href="#" data-view="' + i + '">ดูภาพ</a>' +
+        '<a class="act-del" href="#" data-delete="' + i + '">ลบ</a>' +
+      "</div></td></tr>";
+  }).join("");
+  renderRecordTable._rows = rows;
+}
+
+recordFilter.addEventListener("input", () => renderRecordTable());
+
+recordBody.addEventListener("click", async (e) => {
+  const a = e.target.closest("a");
+  if (!a) return;
+  e.preventDefault();
+  const rows = renderRecordTable._rows || [];
+  if (a.dataset.view !== undefined) {
+    const r = rows[Number(a.dataset.view)];
+    if (!r) return;
+    if (r.imageDataUrl) {
+      showImageModal(r.imageDataUrl, "ผลประเมิน ลำดับที่ " + (r.no || "-") + " · " + (r.label || ""));
+    } else if (r.serverImage && apiBase) {
+      window.open(apiBase + "/exports/" + encodeURIComponent(r.serverImage), "_blank");
+    } else {
+      toast("ไม่พบภาพผลประเมินของรายการนี้", true);
+    }
+  } else if (a.dataset.delete !== undefined) {
+    const r = rows[Number(a.dataset.delete)];
+    if (!r) return;
+    if (!confirm("ยืนยันการลบข้อมูลลำดับที่ " + (r.no || "-") + " (" + (r.label || "-") + ") ?" +
+      (r.serverFile && apiBase ? "\nไฟล์ภาพและรายงานในโฟลเดอร์ exports จะถูกลบด้วย" : ""))) return;
+    /* ลบในเบราว์เซอร์ */
+    const idx = history.findIndex(h => h.savedAt === r.savedAt && (h.no || null) === (r.no || null));
+    if (idx >= 0) history.splice(idx, 1);
+    persistHistory();
+    /* ลบไฟล์ฝั่งเซิร์ฟเวอร์ */
+    if (r.serverFile && apiBase) {
+      try {
+        const res = await fetch(apiBase + "/delete", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: r.serverFile })
+        });
+        const j = await res.json();
+        if (!res.ok || !j.ok) throw new Error(j.error || ("HTTP " + res.status));
+        serverRecords = serverRecords.filter(s => s.report !== r.serverFile);
+      } catch (err) {
+        toast("ลบไฟล์ในโฟลเดอร์ exports ไม่สำเร็จ: " + err.message, true);
+      }
+    }
+    renderRecordTable();
+    setSaveStatus("ลบข้อมูลลำดับที่ " + (r.no || "-") + " แล้ว");
+    toast("ลบข้อมูลแล้ว");
+  }
+});
+
+clearSavedBtn.addEventListener("click", async () => {
+  if (!history.length && !serverRecords.length) return;
+  if (!confirm("ยืนยันลบข้อมูลทั้งหมด " + (history.length + serverRecords.length) + " รายการ?\n" +
+    (apiBase ? "ไฟล์ภาพและรายงานในโฟลเดอร์ exports จะถูกลบทั้งหมดด้วย" : ""))) return;
+  let fail = 0;
+  if (apiBase) {
+    for (const r of serverRecords.slice()) {
+      try {
+        const res = await fetch(apiBase + "/delete", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: r.report })
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+      } catch (err) { fail++; }
+    }
+    serverRecords = [];
+  }
+  history = [];
+  try { localStorage.removeItem(IMAGE_KEY); } catch (e) { /* ข้ามไป */ }
+  persistHistory();
+  renderRecordTable();
+  setSaveStatus(fail ? ("ลบข้อมูลแล้ว แต่ลบไฟล์ฝั่งเครื่องไม่สำเร็จ " + fail + " ไฟล์")
+                     : "ลบข้อมูลทั้งหมดแล้ว", fail ? "err" : "ok");
+  toast(fail ? "ลบข้อมูลแล้ว (มีไฟล์ที่ลบไม่สำเร็จ " + fail + ")" : "ลบข้อมูลทั้งหมดแล้ว", !!fail);
+});
+
+/* ---------------- โหลดรายการที่บันทึกไว้ในเครื่อง ---------------- */
+async function loadServerRecords(quiet) {
+  if (!apiBase) {
+    if (!quiet) toast("ยังไม่เชื่อมต่อเครื่องประมวลผล — จึงอ่านฐานข้อมูลกลางไม่ได้", true);
+    return;
+  }
+  try {
+    const res = await fetch(apiBase + "/records?limit=500", { cache: "no-store" });
+    const j = await res.json();
+    if (!res.ok || !j.ok) throw new Error(j.error || j.store_note || ("HTTP " + res.status));
+    serverRecords = j.records || [];
+    lastNo = Math.max(lastNo, ...serverRecords.map(s => Number(s.no) || 0));
+    renderRecordTable();
+    if (!quiet) toast("โหลดจากฐานข้อมูลกลางแล้ว " + serverRecords.length + " รายการ");
+  } catch (err) {
+    if (!quiet) toast("โหลดรายการไม่สำเร็จ: " + err.message, true);
+  }
+}
+reloadBtn.addEventListener("click", () => loadServerRecords(false));
+/* ---------------- หน้าต่างดูภาพ ---------------- */
+function showImageModal(src, caption) {
+  let box = $("imgModal");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "imgModal";
+    box.className = "modal";
+    box.innerHTML = '<div class="modal-in"><div class="modal-bar"><span id="imgModalCap"></span>' +
+      '<button class="secondary" id="imgModalClose" style="min-height:34px;padding:4px 12px">ปิด</button></div>' +
+      '<img id="imgModalImg" alt="ภาพผลประเมิน" /></div>';
+    document.body.appendChild(box);
+    box.addEventListener("click", (e) => {
+      if (e.target === box || e.target.id === "imgModalClose") box.classList.remove("show");
+    });
+  }
+  $("imgModalCap").textContent = caption || "";
+  $("imgModalImg").src = src;
+  box.classList.add("show");
+}
+
+/* ---------------- ส่งออก / พิมพ์ ---------------- */
+function downloadJson(rows, name) {
+  const clean = rows.map(r => {
+    const c = Object.assign({}, r);
+    delete c.imageDataUrl;
+    return c;
+  });
+  const blob = new Blob([JSON.stringify(clean, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+}
+
+exportAllBtn.addEventListener("click", () => {
+  const rows = renderRecordTable._rows || history;
+  if (!rows.length) { toast("ยังไม่มีข้อมูลให้ส่งออก", true); return; }
+  downloadJson(rows, "ตารางบันทึกผลการตรวจ_" + new Date().toISOString().slice(0, 10) + ".json");
+  toast("ส่งออกข้อมูล " + rows.length + " รายการแล้ว");
+});
+
+if (exportBtn) exportBtn.addEventListener("click", () => {
+  const rows = renderRecordTable._rows || history;
+  if (!rows.length) { toast("ยังไม่มีข้อมูลให้ส่งออก", true); return; }
+  downloadJson(rows, "ตารางบันทึกผลการตรวจ_" + new Date().toISOString().slice(0, 10) + ".json");
+});
+
+/* ===== บันทึกภาพ + ผลการประเมิน (การ์ดด้านบน) ===== */
+saveImageBtn.addEventListener("click", () => {
+  const rec = buildRecord();
+  if (!rec.finalResult) {
+    recResultEl.focus();
+    toast("กรุณาเลือก ‘ผลตรวจที่ได้’ (Hight / Medium / Low) ก่อนบันทึก", true);
+    return;
+  }
+  saveRecordBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (!recLabelEl.value.trim()) { recLabelEl.focus(); toast("กรอก Label ตัวอย่าง แล้วกด “+ บันทึกผลการตรวจ”", true); return; }
+  saveRecordBtn.click();
+});
+
+printBtn.addEventListener("click", () => window.print());
+
+/* ---------------- ท้ายรายงาน (แสดงเฉพาะตอนพิมพ์) ---------------- */
+(function buildPrintFoot() {
+  const host = $("printFoot");
+  if (!host) return;
+  const d = new Date();
+  const dt = d.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+  host.classList.add("print-only");
+  host.innerHTML =
+    '<div style="display:flex;gap:40px;justify-content:space-around;margin-top:26px;font-size:.9rem;text-align:center">' +
+    '<div>ลงชื่อ ................................................<br>ผู้ตรวจวิเคราะห์</div>' +
+    '<div>ลงชื่อ ................................................<br>ผู้ทวนสอบ / หัวหน้าฝ่าย</div></div>' +
+    '<div style="margin-top:14px;font-size:.76rem;text-align:center;color:#5b7288">' +
+    'พิมพ์จากระบบประเมินเม็ดไขมันในตับจากภาพถ่าย เมื่อ ' + dt +
+    ' · ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา กรมประมง</div>';
+})();
+
+/* ---------------- เริ่มต้น ---------------- */
+restoreForm();
+loadHistory();
+renderRecordTable();
+syncRecordForm();
+window.addEventListener("beforeunload", persistForm);
+
+async function boot() {
+  if (!window.fetch) {
+    setMode("เบราว์เซอร์นี้ไม่รองรับการเชื่อมต่อเครื่องประมวลผล",
+      "กรุณาเปิดผ่าน http://127.0.0.1:8000 ด้วย start.bat", "warnbox");
+    setStatus("เบราว์เซอร์ไม่รองรับ fetch — ไม่สามารถประเมินภาพได้", "err");
+    return;
+  }
+  const ok = await detectServer(true);
+  if (ok) {
+    setStatus("พร้อมใช้งานจริง — เชื่อมต่อแบบจำลอง " + ((serverInfo && serverInfo.model) || "liverV1.pt") +
+      " เรียบร้อย นำเข้าภาพเพื่อเริ่มประเมินได้เลย", "ok");
+  } else {
+    setStatus("ยังไม่เชื่อมต่อเครื่องประมวลผล — เปิด start.bat แล้วกด “เชื่อมต่อเครื่องประมวลผล” " +
+      "(ระบบจะตรวจหาซ้ำให้อัตโนมัติทุก 20 วินาที)", "err");
+    setInterval(watchServer, 20000);
+  }
+}
+boot();
+</script>
+</body>
+</html>

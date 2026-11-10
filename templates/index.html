@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ระบบประเมินเม็ดไขมันในตับจากภาพถ่าย | ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา</title>
+<style>
+  :root{
+    --bg:#eef3f9; --surface:#ffffff; --surface-2:#f6f9fc; --line:#d3dfec; --line-2:#e6eef7;
+    --navy:#123f6d; --navy-2:#1d5382; --navy-deep:#0b2f53;
+    --gold:#b98b2e; --gold-soft:#f3e6c9;
+    --text:#14263a; --muted:#5b7288;
+    --accent:#1668a8; --ok:#1c7c54; --warn:#a8620a; --danger:#b3261e;
+    --radius:12px; --sp:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Sarabun","Noto Sans Thai","Leelawadee UI",Tahoma,system-ui,sans-serif;
+    font-size:16px; line-height:1.62;
+    display:flex; flex-direction:column; align-items:center;
+    padding:0 12px 40px;
+  }
+  /* ---------- แถบหน่วยงาน ---------- */
+  .agency{
+    width:100%; background:linear-gradient(180deg,var(--navy),var(--navy-deep));
+    color:#fff; border-bottom:4px solid var(--gold);
+  }
+  .agency-in{
+    max-width:1120px; margin:0 auto; padding:14px 16px;
+    display:flex; align-items:center; gap:16px;
+  }
+  .agency img{width:74px; height:74px; flex:0 0 74px; display:block}
+  .agency .t1{font-size:1.02rem; font-weight:700; letter-spacing:.1px}
+  .agency .t2{font-size:.86rem; color:#cfe0f1; line-height:1.5}
+  .agency .t3{font-size:.78rem; color:#9fc0dd; margin-top:2px; letter-spacing:.4px}
+  @media(max-width:520px){
+    .agency img{width:56px;height:56px;flex-basis:56px}
+    .agency .t1{font-size:.95rem}
+  }
+  /* ---------- แถบชื่อระบบ ---------- */
+  .sysbar{
+    width:100%; background:var(--surface); border-bottom:1px solid var(--line);
+  }
+  .sysbar-in{max-width:1120px; margin:0 auto; padding:16px}
+  .sysbar h1{margin:0; font-size:1.3rem; color:var(--navy); line-height:1.45}
+  .sysbar p{margin:4px 0 0; font-size:.9rem; color:var(--muted)}
+  .crumbs{font-size:.78rem; color:var(--muted); margin-bottom:6px; letter-spacing:.2px}
+
+  main{width:100%; max-width:1120px; margin:var(--sp) auto 0}
+  .grid{display:grid; grid-template-columns:1fr; gap:var(--sp)}
+  @media(min-width:900px){ .grid{grid-template-columns:1.1fr .9fr; align-items:start} }
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px; box-shadow:0 1px 2px rgba(18,63,109,.06), 0 8px 24px -22px rgba(18,63,109,.5);
+  }
+  .card h2{
+    margin:0 0 14px; font-size:1rem; color:var(--navy); font-weight:700;
+    padding-bottom:10px; border-bottom:2px solid var(--line-2);
+    display:flex; align-items:center; gap:8px;
+  }
+  .card h2 .n{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:24px; height:24px; border-radius:6px; background:var(--navy); color:#fff;
+    font-size:.82rem; font-weight:700; flex:0 0 24px;
+  }
+
+  /* ---------- พื้นที่อัปโหลด ---------- */
+  .drop{
+    border:2px dashed #a9c1d8; border-radius:var(--radius); padding:26px 18px; text-align:center;
+    color:var(--muted); cursor:pointer; background:var(--surface-2); transition:.15s;
+  }
+  .drop:hover,.drop.over{border-color:var(--accent); background:#eaf3fc; color:var(--text)}
+  .drop b{color:var(--navy); font-size:1.02rem}
+  .drop .ic{font-size:1.7rem; color:var(--navy-2); margin-bottom:2px}
+  .drop small{display:block; margin-top:6px; font-size:.82rem}
+  .drop.hide{display:none}
+  #browse{display:none}
+  #previewWrap{display:none; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#0b2f53}
+  #previewWrap.show{display:block}
+  #preview{display:block; width:100%; height:auto}
+
+  .btnrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+  button{
+    font:inherit; font-size:.95rem; font-weight:600; border-radius:9px; padding:11px 18px;
+    min-height:44px; cursor:pointer; border:1px solid transparent; transition:.15s;
+  }
+  button.primary{background:var(--navy); color:#fff}
+  button.primary:hover{background:var(--navy-2)}
+  button.secondary{background:var(--surface); color:var(--navy); border-color:var(--line); }
+  button.secondary:hover{background:var(--surface-2); border-color:#b8cde2}
+  button.gold{background:var(--gold); color:#241a04}
+  button.gold:hover{filter:brightness(1.06)}
+  button:disabled{opacity:.5; cursor:not-allowed}
+  button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,
+  .drop:focus-visible{outline:3px solid #7db6e6; outline-offset:2px}
+
+  .status{font-size:.88rem; color:var(--muted); margin-top:10px; min-height:22px}
+  .status.err{color:var(--danger)}
+  .status.ok{color:var(--ok)}
+  .status.busy{color:var(--warn)}
+
+  /* ---------- ฟอร์มข้อมูลตัวอย่าง ---------- */
+  .field{margin-bottom:12px}
+  .field label{display:block; font-size:.85rem; font-weight:600; color:var(--navy); margin-bottom:4px}
+  .field input,.field textarea,select{
+    width:100%; font:inherit; font-size:.95rem; padding:9px 11px; color:var(--text);
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+  }
+  .field input:focus,.field textarea:focus,select:focus{border-color:var(--accent); outline:none; box-shadow:0 0 0 3px #dceaf7}
+  .field textarea{resize:vertical; min-height:64px}
+  .hint{font-size:.78rem; color:var(--muted); margin-top:3px}
+</style>
+</head>
+<body>
+
+<div class="agency">
+  <div class="agency-in">
+    <img src="assets/logo-dof.svg" alt="ตรากรมประมง" width="74" height="74" />
+    <div>
+      <div class="t1">กรมประมง กระทรวงเกษตรและสหกรณ์</div>
+      <div class="t2">ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา</div>
+      <div class="t3">Coastal Aquaculture Research and Development Center, Chachoengsao</div>
+    </div>
+  </div>
+</div>
+
+<div class="sysbar">
+  <div class="sysbar-in">
+    <div class="crumbs">หน้าหลัก › งานตรวจคุณภาพสัตว์น้ำ › ประเมินเม็ดไขมันในตับ</div>
+    <h1>ระบบประเมินเม็ดไขมันในตับจากภาพถ่าย (Image-Based Fat Assessment)</h1>
+    <p>แนบภาพถ่ายตัวอย่างตับเพื่อให้แบบจำลองช่วยคัดกรองระดับเม็ดไขมัน แล้วให้เจ้าหน้าที่ตรวจทานและยืนยันผลก่อนบันทึก</p>
+  </div>
+</div>
+
+<main>
+  <div class="grid">
+    <!-- ============ คอลัมน์ซ้าย: นำเข้าภาพ + ผล ============ -->
+    <div>
+      <section class="card">
+        <h2><span class="n">1</span> นำเข้าภาพตัวอย่าง</h2>
+        <div id="drop" class="drop" tabindex="0" role="button" aria-label="เลือกไฟล์ภาพ">
+          <div class="ic">&#128247;</div>
+          <b>ลากภาพมาวางในกรอบนี้</b> หรือคลิกเพื่อเลือกไฟล์จากเครื่อง
+          <small>รองรับ JPG / PNG / BMP / WEBP · ไม่เกิน 30 MB · ภาพจะถูกประมวลผลภายในเครื่องเท่านั้น</small>
+        </div>
+        <input type="file" id="browse" accept="image/png,image/jpeg,image/bmp,image/webp" />
+        <div id="previewWrap"><img id="preview" alt="ภาพตัวอย่างที่นำเข้า" /></div>
+        <div class="btnrow">
+          <button id="runBtn" class="primary" disabled>ประเมินภาพ</button>
+          <button id="clearBtn" class="secondary" disabled>ล้างข้อมูล</button>
+        </div>
+        <div id="status" class="status">ยังไม่มีภาพในระบบ</div>
+      </section>
+
+      <section class="card" style="margin-top:16px">
+        <h2><span class="n">3</span> ผลการประเมิน</h2>
+        <div id="placeholder" class="status" style="min-height:auto">
+          ผลการประเมินจะปรากฏในส่วนนี้ หลังกดปุ่ม “ประเมินภาพ”
+        </div>
+
+        <div id="result" class="result">
+          <div class="res-head">
+            <div>
+              <div class="lbl">ผลการประเมินจากระบบ</div>
+              <div id="verdictLine" class="verdict-line">—</div>
+              <div id="verdictTh" class="verdict-th"></div>
+            </div>
+            <div class="conf-badge">
+              <div id="confNum" class="conf-num">—</div>
+              <div class="conf-cap">ความมั่นใจ</div>
+            </div>
+          </div>
+
+          <div id="bars" class="bars"></div>
+
+          <div class="meta-line">
+            <span>ตรวจพบ <b id="detCount">0</b> ตำแหน่ง</span>
+            <span>เวลาประมวลผล <b id="msLine">0</b> ms</span>
+            <span>แบบจำลอง <b>liverV1.pt</b></span>
+          </div>
+
+          <div class="override">
+            <div class="ov-head">การตรวจทานโดยเจ้าหน้าที่</div>
+            <p class="hint" style="margin-top:0">
+              หากเห็นว่าผลของระบบยังไม่ตรงกับสภาพจริง ให้ปรับผลการประเมินด้านล่าง ระบบจะบันทึกทั้งผลของแบบจำลองและผลที่เจ้าหน้าที่ทวนสอบ
+            </p>
+            <div class="field">
+              <label for="finalLevel">ผลการประเมินที่ยืนยัน (แก้ไขได้)</label>
+              <select id="finalLevel">
+                <option value="Hight">Hight — ตรวจพบเม็ดไขมันมาก</option>
+                <option value="Medium">Medium — ตรวจพบเม็ดไขมันปานกลาง</option>
+                <option value="Low">Low — ตรวจพบเม็ดไขมันน้อย</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="finalNote">เหตุผล / หมายเหตุการแก้ไขผล</label>
+              <textarea id="finalNote" placeholder="เช่น ผลจากภาพไม่ชัด จึงตรวจสอบซ้ำด้วยกล้องจุลทรรศน์ และปรับเป็นระดับปานกลาง"></textarea>
+            </div>
+            <div id="overrideState" class="ov-state"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ คอลัมน์ขวา: ข้อมูลตัวอย่าง + บันทึก ============ -->
+    <div>
+      <section class="card">
+        <h2><span class="n">2</span> ข้อมูลตัวอย่าง / ผู้ตรวจ</h2>
+        <div class="field">
+          <label for="recLabel">Label ตัวอย่าง</label>
+          <input id="recLabel" type="text" placeholder="เช่น CC-AQ-2569-001 หรือ ตับปลากะพง ครั้งที่ 3" />
+        </div>
+        <div class="field">
+          <label for="farm">ฟาร์มที่มาของตัวอย่าง</label>
+          <input id="farm" type="text" placeholder="เช่น ฟาร์มลุงสมชาย ต.บางปะกง จ.ฉะเชิงเทรา" />
+        </div>
+        <div class="field">
+          <label for="recInspector">ชื่อผู้ตรวจวิเคราะห์</label>
+          <input id="recInspector" type="text" placeholder="ชื่อ-นามสกุล ตำแหน่ง" />
+        </div>
+        <div class="field">
+          <label for="recResult">ผลตรวจที่ได้</label>
+          <select id="recResult">
+            <option value="Hight">Hight — ตรวจพบเม็ดไขมันมาก</option>
+            <option value="Medium" selected>Medium — ตรวจพบเม็ดไขมันปานกลาง</option>
+            <option value="Low">Low — ตรวจพบเม็ดไขมันน้อย</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="recConf">เปอร์เซ็นต์ความเชื่อมั่น</label>
+          <input id="recConf" type="text" readonly placeholder="— จะแสดงหลังประเมินภาพ" />
+        </div>
+        <div class="field">
+          <label for="note">หมายเหตุเพิ่มเติม</label>
+          <textarea id="note" placeholder="สภาพตัวอย่าง อุปกรณ์ถ่ายภาพ ฯลฯ"></textarea>
+        </div>
+        <div class="btnrow" style="margin-top:6px">
+          <button id="saveBtn" class="gold" disabled>บันทึกผลการตรวจ</button>
+          <button id="recClearBtn" class="secondary">ล้างฟอร์ม</button>
+        </div>
+        <div id="saveStatus" class="status">ยังไม่มีรายการที่บันทึก</div>
+        <div class="hint">ลำดับที่ออกให้อัตโนมัติเมื่อบันทึก · ภาพผลประเมินถูกจัดเก็บพร้อมรายงานในโฟลเดอร์ exports</div>
+      </section>
+    </div>
+  </div>
+
+  <section id="recordCard" class="card record-card">
+    <div class="rec-bar">
+      <h2 style="margin:0"><span class="n">3</span> ตารางบันทึกผลการตรวจ
+        <span id="recordCount" class="rec-count">0 รายการ</span></h2>
+      <div class="btns">
+        <input id="recordFilter" class="rec-filter" type="search" placeholder="ค้นหา label / ฟาร์ม / ผู้ตรวจ" />
+        <button id="reloadBtn" class="secondary">โหลดรายการจากเครื่อง</button>
+        <button id="printBtn" class="secondary" disabled>พิมพ์ตาราง / PDF</button>
+        <button id="clearSavedBtn" class="danger" disabled>ลบข้อมูลทั้งหมด</button>
+      </div>
+    </div>
+    <div class="rec-table-wrap">
+      <table class="rec-table">
+        <thead>
+          <tr>
+            <th style="width:68px">ลำดับที่</th>
+            <th>Label ตัวอย่าง</th>
+            <th class="t-left">ฟาร์มที่มาของตัวอย่าง</th>
+            <th style="width:200px">ผลตรวจที่ได้</th>
+            <th style="width:110px">ความเชื่อมั่น</th>
+            <th class="t-left" style="width:170px">ผู้ตรวจวิเคราะห์</th>
+            <th style="width:126px">วันที่บันทึก</th>
+            <th style="width:112px">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="recordBody"></tbody>
+      </table>
+      <div id="recordEmpty" class="rec-empty">ยังไม่มีข้อมูล — กรอกข้อมูลด้านบนแล้วกด “บันทึกผลการตรวจ” ตารางผลจะแสดงที่นี่</div>
+    </div>
+    <div class="rec-foot">
+      <span>ระบบบันทึกทั้ง “ผลของแบบจำลอง” และ “ผลที่เจ้าหน้าที่ยืนยัน” ไว้ในรายงาน JSON ทุกฉบับ</span>
+      <span id="saveFolder" class="hint" style="margin:0"></span>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px; grid-column:1/-1">
+    <h2><span class="n">i</span> คำอธิบายเกณฑ์การประเมิน</h2>
+    <table class="rubric">
+      <thead><tr><th>ระดับ</th><th>ความหมาย</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag t-h">Hight</span></td><td>ตรวจพบเม็ดไขมันมาก</td></tr>
+        <tr><td><span class="tag t-m">Medium</span></td><td>ตรวจพบเม็ดไขมันปานกลาง</td></tr>
+        <tr><td><span class="tag t-l">Low</span></td><td>ตรวจพบเม็ดไขมันน้อย</td></tr>
+      </tbody>
+    </table>
+    <p class="hint" style="margin-top:12px">
+      ผลจากแบบจำลองเป็นเครื่องมือช่วยคัดกรองเบื้องต้น ไม่ใช่ผลวินิจฉัยทางวิชาการ
+      เจ้าหน้าที่ผู้ตรวจต้องยืนยันผลทุกครั้งก่อนนำไปใช้ในรายงานราชการ
+    </p>
+  </section>
+</main>
+
+<style>
+  /* ---------- ผลการประเมิน ---------- */
+  .result{display:none}
+  .result.show{display:block}
+  .res-head{display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap}
+  .lbl{font-size:.78rem; color:var(--muted); letter-spacing:.3px}
+  .verdict-line{font-size:1.16rem; font-weight:700; color:var(--navy); margin-top:2px}
+  .verdict-line .tag{font-size:.85rem; vertical-align:middle; margin-right:6px}
+  .verdict-th{font-size:1.5rem; font-weight:700; line-height:1.35; margin-top:2px}
+  .conf-badge{
+    border:1px solid var(--line); border-radius:10px; padding:8px 14px; text-align:center;
+    background:var(--surface-2); min-width:96px;
+  }
+  .conf-num{font-size:1.35rem; font-weight:700; color:var(--navy)}
+  .conf-cap{font-size:.74rem; color:var(--muted)}
+  .bars{margin-top:14px; border-top:1px solid var(--line-2); padding-top:12px}
+  .brow{margin-bottom:10px}
+  .brow .btop{display:flex; justify-content:space-between; gap:8px; font-size:.88rem; color:var(--muted)}
+  .brow .btop b{color:var(--text)}
+  .bar{height:9px; border-radius:99px; background:#e4ecf5; overflow:hidden; margin-top:5px}
+  .bar > i{display:block; height:100%; width:0; border-radius:99px; transition:width .5s}
+  .win-note{font-size:.74rem; font-weight:700; color:var(--navy); border:1px solid var(--navy);
+    border-radius:99px; padding:0 7px; margin-left:6px; background:#eaf3fc}
+  .meta-line{display:flex; gap:16px; flex-wrap:wrap; font-size:.8rem; color:var(--muted);
+    border-top:1px solid var(--line-2); padding-top:10px; margin-top:4px}
+  .meta-line b{color:var(--text)}
+
+  /* ---------- แก้ไขผล ---------- */
+  .override{margin-top:14px; background:#fbf7ec; border:1px solid #e8d9b2; border-radius:10px; padding:14px}
+  .ov-head{font-weight:700; color:#7a5a10; font-size:.92rem; margin-bottom:6px}
+  .override .field label{color:#7a5a10}
+  .override input,.override textarea,.override select{border-color:#e0cfa4}
+  .ov-state{font-size:.84rem; font-weight:600; color:var(--warn); margin-top:4px; min-height:20px}
+  .ov-state.ok{color:var(--ok)}
+
+  /* ---------- ป้ายระดับ ---------- */
+  .tag{display:inline-block; font-size:.76rem; font-weight:700; padding:2px 9px; border-radius:99px; border:1px solid}
+  .t-h{color:#0e6f8c; border-color:#9fd6e3; background:#e8f6fa}
+  .t-m{color:#8a5a06; border-color:#e6cd99; background:#fdf4e2}
+  .t-l{color:#a02b26; border-color:#eebcb8; background:#fdeceb}
+
+  /* ---------- ตารางเกณฑ์ ---------- */
+  .rubric{width:100%; border-collapse:collapse; font-size:.9rem}
+  .rubric th,.rubric td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--line-2)}
+  .rubric th{font-size:.78rem; color:var(--muted); font-weight:600; background:var(--surface-2)}
+
+  /* ---------- รายการที่บันทึก ---------- */
+  .record-card{margin-top:16px}
+  .rec-bar{display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-bottom:12px}
+  .rec-bar h2{margin:0; border:0; padding:0; font-size:1.02rem}
+  .btns{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .rec-count{display:inline-block; margin-left:8px; font-size:.76rem; font-weight:600; color:var(--navy);
+    background:#eaf3fc; border:1px solid #cfe2f4; border-radius:99px; padding:1px 10px; vertical-align:middle}
+  .rec-filter{font:inherit; font-size:.86rem; padding:7px 11px; border:1px solid var(--line);
+    border-radius:8px; min-width:210px; max-width:100%; background:var(--surface)}
+  .rec-table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface)}
+  .rec-table{width:100%; border-collapse:collapse; font-size:.86rem; min-width:900px}
+  .rec-table th{background:var(--navy); color:#fff; font-size:.76rem; font-weight:600; padding:9px 10px;
+    text-align:center; white-space:nowrap; border-right:1px solid rgba(255,255,255,.16)}
+  .rec-table th:last-child{border-right:0}
+  .rec-table th.t-left{text-align:left}
+  .rec-table td{padding:9px 10px; border-bottom:1px solid var(--line-2); border-right:1px solid var(--line-2);
+    text-align:center; vertical-align:middle}
+  .rec-table td:last-child{border-right:0}
+  .rec-table tbody tr:nth-child(even){background:#f7fafd}
+  .rec-table tbody tr:hover{background:#eef5fc}
+  .rec-table td.t-left{text-align:left}
+  .rec-no{font-weight:700; color:var(--navy); font-variant-numeric:tabular-nums}
+  .rec-val{display:inline-block; font-weight:700; font-size:.78rem; padding:2px 9px; border-radius:99px; border:1px solid}
+  .rec-val small{display:block; font-weight:500; font-size:.7rem; opacity:.85}
+  .rec-num{font-variant-numeric:tabular-nums; font-weight:600}
+  .rec-actions{display:flex; gap:8px; justify-content:center}
+  .rec-actions a{font-size:.78rem; font-weight:600; text-decoration:none; cursor:pointer}
+  .act-view{color:var(--accent)}
+  .act-del{color:var(--danger)}
+  .rec-empty{padding:22px 14px; text-align:center; font-size:.88rem; color:var(--muted)}
+  .rec-foot{display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; font-size:.76rem;
+    color:var(--muted); margin-top:10px}
+  .saved-head{font-size:.82rem; font-weight:700; color:var(--navy); margin:16px 0 8px;
+    border-top:1px solid var(--line-2); padding-top:12px}
+  .saved-list{font-size:.85rem}
+  .saved-list .empty{color:var(--muted)}
+  .saved-item{padding:8px 0; border-bottom:1px dashed var(--line-2)}
+  .saved-item:last-child{border-bottom:0}
+  .saved-item .si-top{display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap}
+  .saved-item .si-name{font-weight:600; color:var(--text)}
+  .saved-item .si-sub{color:var(--muted); font-size:.78rem}
+
+  .toast{
+    position:fixed; left:50%; bottom:22px; transform:translate(-50%,20px);
+    background:var(--navy-deep); color:#fff; padding:11px 20px; border-radius:10px;
+    font-size:.9rem; box-shadow:0 10px 30px -12px rgba(0,0,0,.6); opacity:0; pointer-events:none;
+    transition:.25s; z-index:50; max-width:92vw;
+  }
+  .toast.show{opacity:1; transform:translate(-50%,0)}
+  .toast.err{background:var(--danger)}
+
+  footer{
+    width:100%; max-width:1120px; margin:24px auto 0; padding-top:14px;
+    border-top:1px solid var(--line); font-size:.78rem; color:var(--muted); text-align:center;
+  }
+  @media print{
+    .agency, .sysbar, .drop, .btnrow, .override select, .override textarea,
+    .saved-head, .saved-list, footer, .toast, #saveFolder, #saveStatus, #status{display:none !important}
+    body{background:#fff; padding:0}
+    .card{box-shadow:none; border:1px solid #999; page-break-inside:avoid}
+    .grid{grid-template-columns:1fr 1fr}
+  }
+</style>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<footer>
+  ระบบประเมินเม็ดไขมันในตับจากภาพถ่าย · ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา · กรมประมง<br>
+  ประมวลผลภายในเครื่อง (offline) ด้วยแบบจำลอง liverV1.pt — ภาพและผลการประเมินไม่ถูกส่งออกไปภายนอก
+</footer>
+
+<script>
+const LEVELS = ["Hight", "Medium", "Low"];
+const LEVEL_TEXT = {
+  Hight:  { short: "ตรวจพบเม็ดไขมันมาก",     long: "ตรวจพบเม็ดไขมันมากในเนื้อตับ",     th: "ระดับสูง",       color: "#0e8fae" },
+  Medium: { short: "ตรวจพบเม็ดไขมันปานกลาง", long: "ตรวจพบเม็ดไขมันในปริมาณปานกลาง",  th: "ระดับปานกลาง", color: "#c98a12" },
+  Low:    { short: "ตรวจพบเม็ดไขมันน้อย",    long: "ตรวจพบเม็ดไขมันในปริมาณน้อย",      th: "ระดับต่ำ",       color: "#b3261e" }
+};
+
+const $ = (id) => document.getElementById(id);
+const dropEl = $("drop"), fileEl = $("browse"), previewWrap = $("previewWrap"), previewEl = $("preview");
+const runBtn = $("runBtn"), clearBtn = $("clearBtn"), statusEl = $("status");
+const resultEl = $("result"), placeholderEl = $("placeholder");
+const verdictLine = $("verdictLine"), verdictTh = $("verdictTh"), confNum = $("confNum");
+const barsEl = $("bars"), detCountEl = $("detCount"), msLine = $("msLine");
+const finalLevelEl = $("finalLevel"), finalNoteEl = $("finalNote"), overrideState = $("overrideState");
+const saveBtn = $("saveBtn"), printBtn = $("printBtn"), clearSavedBtn = $("clearSavedBtn");
+const saveStatusEl = $("saveStatus"), saveFolderEl = $("saveFolder");
+const toastEl = $("toast");
+const farmEl = $("farm"), inspectorEl = $("inspector"), noteEl = $("note");
+const recLabelEl = $("recLabel"), recResultEl = $("recResult"), recConfEl = $("recConf"), recClearBtn = $("recClearBtn");
+const recordBody = $("recordBody"), recordCount = $("recordCount"), recordFilter = $("recordFilter"),
+      recordEmpty = $("recordEmpty"), reloadBtn = $("reloadBtn");
+
+let currentFile = null;
+let currentData = null;      // ผลลัพธ์จาก /predict
+let currentAnnotated = null; // ภาพ annotated (data URL)
+let currentFileUrl = null;   // object URL ของภาพต้นฉบับ
+let history = [];            // รายการที่บันทึก (ในเบราว์เซอร์)
+let serverRecords = [];      // รายการรายงานในโฟลเดอร์ exports/
+
+function setStatus(msg, kind) {
+  statusEl.textContent = msg;
+  statusEl.className = "status" + (kind ? " " + kind : "");
+}
+function toast(msg, isErr) {
+  toastEl.textContent = msg;
+  toastEl.className = "toast show" + (isErr ? " err" : "");
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(() => { toastEl.className = "toast"; }, 3200);
+}
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ---------------- นำเข้าภาพ ---------------- */
+dropEl.addEventListener("click", () => fileEl.click());
+dropEl.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileEl.click(); } });
+["dragenter", "dragover"].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.remove("over"); }));
+dropEl.addEventListener("drop", e => {
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) pickFile(f);
+});
+fileEl.addEventListener("change", () => { if (fileEl.files[0]) pickFile(fileEl.files[0]); });
+
+function pickFile(file) {
+  if (!file.type || !file.type.startsWith("image/")) { setStatus("ไฟล์ที่เลือกไม่ใช่รูปภาพ", "err"); return; }
+  if (file.size > 30 * 1024 * 1024) { setStatus("ไฟล์ใหญ่เกิน 30 MB", "err"); return; }
+  if (currentFileUrl) URL.revokeObjectURL(currentFileUrl);
+  currentFile = file;
+  currentData = null;
+  currentAnnotated = null;
+  currentFileUrl = URL.createObjectURL(file);
+  previewEl.onerror = () => { previewEl.onerror = null; previewEl.src = currentFileUrl; };
+  previewEl.src = currentFileUrl;
+  previewWrap.classList.add("show");
+  dropEl.classList.add("hide");
+  runBtn.disabled = false;
+  clearBtn.disabled = false;
+  resultEl.classList.remove("show");
+  placeholderEl.style.display = "block";
+  saveBtn.disabled = true;
+  printBtn.disabled = true;
+  if (!recLabelEl.value) recLabelEl.value = file.name.replace(/\.[^.]+$/, "");
+  setStatus("พร้อมประเมิน: " + file.name + " (" + Math.round(file.size / 1024) + " KB)", "ok");
+}
+
+function resetAll() {
+  currentFile = null; currentData = null; currentAnnotated = null;
+  if (currentFileUrl) { URL.revokeObjectURL(currentFileUrl); currentFileUrl = null; }
+  fileEl.value = "";
+  previewEl.removeAttribute("src");
+  previewWrap.classList.remove("show");
+  dropEl.classList.remove("hide");
+  runBtn.disabled = true;
+  clearBtn.disabled = true;
+  saveBtn.disabled = true;
+  printBtn.disabled = true;
+  resultEl.classList.remove("show");
+  placeholderEl.style.display = "block";
+  overrideState.textContent = "";
+  setStatus("ยังไม่มีภาพในระบบ");
+}
+clearBtn.addEventListener("click", resetAll);
+
+/* ---------------- ประเมินภาพ ---------------- */
+runBtn.addEventListener("click", async () => {
+  if (!currentFile) return;
+  runBtn.disabled = true; clearBtn.disabled = true;
+  setStatus("กำลังประเมินภาพ… (ครั้งแรกอาจใช้เวลาสักครู่เพื่อโหลดแบบจำลอง)", "busy");
+  const t0 = performance.now();
+  try {
+    const res = await fetch("/predict", { method: "POST", body: currentFile });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || ("HTTP " + res.status));
+    data.fileName = currentFile.name;
+    currentData = data;
+    currentAnnotated = data.image ? "data:image/jpeg;base64," + data.image : null;
+    renderResult(data, Math.round(performance.now() - t0));
+    if (currentAnnotated) previewEl.src = currentAnnotated;
+    saveBtn.disabled = false;
+    printBtn.disabled = false;
+    setStatus("ประเมินเสร็จสิ้น (" + Math.round(performance.now() - t0) + " ms) — กรุณาตรวจทานผลก่อนบันทึก", "ok");
+  } catch (err) {
+    setStatus("ประเมินไม่สำเร็จ: " + err.message, "err");
+    toast("ประเมินไม่สำเร็จ: " + err.message, true);
+  } finally {
+    runBtn.disabled = false; clearBtn.disabled = false;
+  }
+});
+
+function levelLabel(level) {
+  const t = LEVEL_TEXT[level];
+  return t ? level + " — " + t.short : "ไม่ระบุ";
+}
+
+function renderResult(data, ms) {
+  placeholderEl.style.display = "none";
+  resultEl.classList.add("show");
+  const dets = data.detections || [];
+  detCountEl.textContent = dets.length;
+  msLine.textContent = ms;
+
+  if (!data.verdict || !dets.length) {
+    verdictLine.innerHTML = '<span class="tag t-m">ไม่สามารถประเมินได้</span>';
+    verdictTh.textContent = "ไม่พบลักษณะเม็ดไขมันที่แบบจำลองรู้จักในภาพนี้";
+    verdictTh.style.color = "var(--warn)";
+    confNum.textContent = "0.0%";
+    barsEl.innerHTML = LEVELS.map(n =>
+      '<div class="brow"><div class="btop"><span>' + esc(n) + " — " + esc(LEVEL_TEXT[n].short) +
+      "</span><b>0.0%</b></div><div class=\"bar\"><i style=\"width:0%;background:" + LEVEL_TEXT[n].color + "\"></i></div></div>"
+    ).join("");
+    overrideState.textContent = "ยังไม่มีผลจากแบบจำลองให้ยืนยัน กรุณาประเมินภาพใหม่หรือตรวจด้วยวิธีอื่น";
+    recConfEl.value = "";
+    return;
+  }
+
+  const lv = data.verdict;
+  const color = LEVEL_TEXT[lv].color;
+  const pct = Number(data.confidence_pct || 0);
+  const levelPct = data.level_pct || {};
+
+  verdictLine.innerHTML = '<span class="tag" style="color:' + color + ";border-color:" + color +
+    ";background:" + color + "14\">" + esc(lv) + "</span>";
+  verdictTh.textContent = LEVEL_TEXT[lv].short;
+  verdictTh.style.color = color;
+  confNum.textContent = pct.toFixed(1) + "%";
+
+  barsEl.innerHTML = LEVELS.map(n => {
+    const v = Number(levelPct[n] !== undefined ? levelPct[n] : 0);
+    const isWin = n === lv;
+    return '<div class="brow"><div class="btop"><span>' + esc(n) + " — " + esc(LEVEL_TEXT[n].short) +
+      (isWin ? '<span class="win-note">ผลจากระบบ</span>' : "") + "</span><b>" + v.toFixed(1) + "%</b></div>" +
+      '<div class="bar"><i style="width:' + v + "%;background:" + LEVEL_TEXT[n].color +
+      ";opacity:" + (isWin ? 1 : 0.45) + '"></i></div></div>';
+  }).join("");
+
+  finalLevelEl.value = lv;
+  finalNoteEl.value = "";
+  overrideState.className = "ov-state";
+  overrideState.textContent = "ผลที่ยืนยันตรงกับผลของระบบ";
+  if (recResultEl.value !== lv) recResultEl.value = lv;
+  syncConfField();
+}
+
+/* ---------------- ตรวจทาน / แก้ไขผล ---------------- */
+function checkOverride() {
+  if (!currentData || !currentData.verdict) return;
+  const modelLv = currentData.verdict;
+  const final = finalLevelEl.value;
+  if (final === modelLv) {
+    overrideState.className = "ov-state";
+    overrideState.textContent = "ผลที่ยืนยันตรงกับผลของระบบ";
+  } else {
+    overrideState.className = "ov-state";
+    overrideState.textContent = "แก้ไขผล: ระบบประเมิน " + modelLv + " (" + LEVEL_TEXT[modelLv].short +
+      ") → เจ้าหน้าที่ยืนยัน " + final + " (" + LEVEL_TEXT[final].short + ")";
+  }
+}
+finalLevelEl.addEventListener("change", checkOverride);
+finalNoteEl.addEventListener("input", () => {
+  if (!currentData || !currentData.verdict) return;
+  if (finalLevelEl.value !== currentData.verdict && !finalNoteEl.value.trim()) {
+    overrideState.textContent = "กรุณาระบุเหตุผลประกอบการแก้ไขผล";
+  }
+});
+
+/* ---------------- บันทึกผลการตรวจ + ตารางบันทึกผล ---------------- */
+const HISTORY_KEY = "liverFatEvalRecordsV4";
+const FORM_KEY = "liverRecordFormV4";
+
+function setSaveStatus(msg, kind) {
+  saveStatusEl.textContent = msg;
+  saveStatusEl.className = "status" + (kind ? " " + kind : "");
+}
+function fmtDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso || "-";
+  const p = (n) => String(n).padStart(2, "0");
+  return p(d.getDate()) + "/" + p(d.getMonth() + 1) + "/" + (d.getFullYear() + 543) + " " +
+    p(d.getHours()) + ":" + p(d.getMinutes());
+}
+function tagClass(lv) { return lv === "Hight" ? "t-h" : lv === "Medium" ? "t-m" : "t-l"; }
+function levelColor(lv) {
+  const t = LEVEL_TEXT[lv];
+  return t ? t.color : "#5b7288";
+}
+function levelShort(lv) { return LEVEL_TEXT[lv] ? LEVEL_TEXT[lv].short : "ไม่ระบุ"; }
+
+/* ความเชื่อมั่นของระดับที่เลือก: ตรงกับผลระบบใช้ค่าจริง ถ้าเจ้าหน้าที่แก้ใช้สัดส่วนของระดับนั้น */
+function confOf(level) {
+  if (!currentData) return null;
+  if (currentData.verdict && level === currentData.verdict) return Number(currentData.confidence_pct || 0);
+  const lp = currentData.level_pct || {};
+  if (lp[level] !== undefined && Number(lp[level]) > 0) return Number(lp[level]);
+  return null;
+}
+function syncConfField() {
+  const c = confOf(recResultEl.value);
+  recConfEl.value = c === null ? "" : c.toFixed(1) + " %";
+}
+function persistHistory() {
+  try {
+    const plain = history.map(h => {
+      const c = Object.assign({}, h);
+      delete c.imageDataUrl;
+      return c;
+    });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(plain.slice(0, 300)));
+  } catch (e) { /* พื้นที่เต็ม — ไฟล์ยังถูกบันทึกในโฟลเดอร์ exports */ }
+}
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    history = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(history)) history = [];
+  } catch (e) { history = []; }
+}
+function persistForm() {
+  try {
+    localStorage.setItem(FORM_KEY, JSON.stringify({
+      label: recLabelEl.value, farm: farmEl.value,
+      inspector: inspectorEl.value, result: recResultEl.value
+    }));
+  } catch (e) { /* ข้ามไป */ }
+}
+function restoreForm() {
+  try {
+    const raw = localStorage.getItem(FORM_KEY);
+    if (!raw) return;
+    const f = JSON.parse(raw) || {};
+    if (f.label) recLabelEl.value = f.label;
+    if (f.farm) farmEl.value = f.farm;
+    if (f.inspector) inspectorEl.value = f.inspector;
+    if (f.result) recResultEl.value = f.result;
+  } catch (e) { /* ข้ามไป */ }
+}
+
+/* ---------------- วาดตารางบันทึกผล ---------------- */
+function renderRecordTable(highlightTs) {
+  const seen = new Set(history.map(h => h.reportFile).filter(Boolean));
+  let rows = history.slice();
+  serverRecords.forEach(r => {
+    if (r.report && seen.has(r.report)) return;
+    rows.push({
+      no: r.no,
+      savedAt: r.saved_at || new Date((r.time || 0) * 1000).toISOString(),
+      label: r.sample_name || r.sample_id || "-",
+      farm: r.farm || "",
+      inspector: r.inspector || "",
+      finalResult: r.final_result || "",
+      finalConfidence: r.final_confidence_pct,
+      edited: !!r.edited,
+      reportFile: r.report,
+      imageFile: r.image,
+      fromServer: true
+    });
+  });
+
+  const q = (recordFilter.value || "").trim().toLowerCase();
+  if (q) {
+    rows = rows.filter(r => [r.label, r.farm, r.inspector, r.finalResult]
+      .join(" ").toLowerCase().indexOf(q) >= 0);
+  }
+  rows.sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0) ||
+    String(a.savedAt).localeCompare(String(b.savedAt)));
+
+  recordCount.textContent = rows.length + " รายการ";
+  clearSavedBtn.disabled = history.length === 0 && serverRecords.length === 0;
+  printBtn.disabled = rows.length === 0;
+  recordEmpty.style.display = rows.length ? "none" : "block";
+
+  recordBody.innerHTML = rows.map((r, i) => {
+    const lv = r.finalResult;
+    const c = (r.finalConfidence === null || r.finalConfidence === undefined || r.finalConfidence === "")
+      ? "—" : Number(r.finalConfidence).toFixed(1) + " %";
+    const col = levelColor(lv);
+    const note = r.edited
+      ? '<div class="rec-num" style="font-size:.7rem;font-weight:600;color:var(--warn)">* เจ้าหน้าที่แก้ไข</div>'
+      : "";
+    const isNew = highlightTs && r.savedAt === highlightTs ? ' class="is-new"' : "";
+    return "<tr" + isNew + ">" +
+      '<td class="rec-no">' + esc(r.no || (i + 1)) + "</td>" +
+      "<td><b>" + esc(r.label || "-") + "</b></td>" +
+      '<td class="t-left">' + esc(r.farm || "-") + "</td>" +
+      '<td><span class="rec-val" style="color:' + col + ";border-color:" + col +
+        ";background:" + col + '14">' + esc(lv || "-") + "<small>" + esc(levelShort(lv)) + "</small></span></td>" +
+      '<td class="rec-num">' + esc(c) + "</td>" +
+      '<td class="t-left">' + esc(r.inspector || "-") + note + "</td>" +
+      '<td style="font-size:.78rem;color:var(--muted)">' + esc(fmtDate(r.savedAt)) + "</td>" +
+      '<td><div class="rec-actions">' +
+        '<a class="act-view" data-view="' + i + '">ภาพ</a>' +
+        '<a class="act-del" data-del="' + i + '">ลบ</a>' +
+      "</div></td></tr>";
+  }).join("");
+  renderRecordTable._rows = rows;
+}
+
+/* ---------------- ลบข้อมูล ---------------- */
+async function deleteReport(name) {
+  if (!name) return true;
+  try {
+    const res = await fetch("/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name })
+    });
+    const j = await res.json();
+    if (!res.ok || !j.ok) throw new Error(j.error || ("HTTP " + res.status));
+    serverRecords = serverRecords.filter(s => s.report !== name);
+    return true;
+  } catch (err) {
+    toast("ลบไฟล์ในโฟลเดอร์ exports ไม่สำเร็จ: " + err.message, true);
+    return false;
+  }
+}
+
+recordBody.addEventListener("click", async (e) => {
+  const a = e.target.closest("a");
+  if (!a) return;
+  const rows = renderRecordTable._rows || [];
+  if (a.dataset.view !== undefined) {
+    const r = rows[Number(a.dataset.view)];
+    if (!r) return;
+    if (r.imageDataUrl) window.open(r.imageDataUrl, "_blank");
+    else if (r.imageFile) window.open("/exports/" + encodeURIComponent(r.imageFile), "_blank");
+    else toast("ไม่พบภาพของรายการนี้", true);
+  } else if (a.dataset.del !== undefined) {
+    const r = rows[Number(a.dataset.del)];
+    if (!r) return;
+    if (!confirm("ยืนยันการลบข้อมูลลำดับที่ " + (r.no || "-") + " (" + (r.label || "-") + ")?\n" +
+      (r.reportFile ? "ไฟล์ภาพและรายงานในโฟลเดอร์ exports จะถูกลบด้วย" : ""))) return;
+    const idx = history.findIndex(h =>
+      (h.reportFile && h.reportFile === r.reportFile) || h.savedAt === r.savedAt);
+    if (idx >= 0) history.splice(idx, 1);
+    persistHistory();
+    if (r.reportFile) await deleteReport(r.reportFile);
+    renderRecordTable();
+    setSaveStatus("ลบข้อมูลลำดับที่ " + (r.no || "-") + " แล้ว", "ok");
+    toast("ลบข้อมูลแล้ว");
+  }
+});
+
+clearSavedBtn.addEventListener("click", async () => {
+  const total = history.length + serverRecords.length;
+  if (!total) return;
+  if (!confirm("ยืนยันลบข้อมูลทั้งหมด " + total + " รายการ?\n" +
+    "ไฟล์ภาพและรายงานในโฟลเดอร์ exports จะถูกลบทั้งหมดด้วย")) return;
+  let fail = 0;
+  for (const r of serverRecords.slice()) {
+    const ok = await deleteReport(r.report);
+    if (!ok) fail++;
+  }
+  history = [];
+  persistHistory();
+  renderRecordTable();
+  setSaveStatus(fail ? ("ลบข้อมูลแล้ว แต่ลบไฟล์ฝั่งเครื่องไม่สำเร็จ " + fail + " ไฟล์")
+                     : "ลบข้อมูลทั้งหมดแล้ว", fail ? "err" : "ok");
+  toast(fail ? "ลบข้อมูลแล้ว (มีไฟล์ที่ลบไม่สำเร็จ " + fail + ")" : "ลบข้อมูลทั้งหมดแล้ว", !!fail);
+});
+
+/* ---------------- โหลดรายการที่บันทึกไว้ในเครื่อง ---------------- */
+async function loadServerRecords(quiet) {
+  try {
+    const res = await fetch("/exports", { cache: "no-store" });
+    const j = await res.json();
+    if (!res.ok || !j.ok) throw new Error(j.error || ("HTTP " + res.status));
+    serverRecords = j.exports || [];
+    if (serverRecords.length) {
+      saveFolderEl.textContent = "รายงานที่บันทึกไว้ในเครื่อง: " + serverRecords.length + " ฉบับ";
+    }
+    renderRecordTable();
+    if (!quiet) toast("โหลดรายการจากโฟลเดอร์ exports แล้ว " + serverRecords.length + " รายการ");
+  } catch (err) {
+    if (!quiet) toast("โหลดรายการไม่สำเร็จ: " + err.message, true);
+  }
+}
+reloadBtn.addEventListener("click", () => loadServerRecords(false));
+recordFilter.addEventListener("input", () => renderRecordTable());
+
+/* ---------------- บันทึกผลการตรวจ ---------------- */
+saveBtn.addEventListener("click", async () => {
+  const label = recLabelEl.value.trim();
+  const farm = farmEl.value.trim();
+  const inspector = inspectorEl.value.trim();
+  const final = recResultEl.value;
+  if (!label) { recLabelEl.focus(); toast("กรุณากรอก Label ตัวอย่างก่อนบันทึก", true); return; }
+  if (!farm) { farmEl.focus(); toast("กรุณากรอกฟาร์มที่มาของตัวอย่าง", true); return; }
+  if (!inspector) { inspectorEl.focus(); toast("กรุณากรอกชื่อผู้ตรวจวิเคราะห์", true); return; }
+
+  const modelLv = currentData && currentData.verdict ? currentData.verdict : null;
+  const edited = !!modelLv && final !== modelLv;
+  const conf = confOf(final);
+
+  if (edited && !finalNoteEl.value.trim()) {
+    finalNoteEl.focus();
+    overrideState.textContent = "กรุณาระบุเหตุผลประกอบการแก้ไขผลก่อนบันทึก";
+    toast("กรุณาระบุเหตุผลประกอบการแก้ไขผล", true);
+    return;
+  }
+
+  saveBtn.disabled = true;
+  setSaveStatus("กำลังบันทึก…", "busy");
+
+  let item = null;
+  try {
+    const res = await fetch("/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image: currentAnnotated || "",
+        title: label,
+        sampleName: label,
+        sampleId: label,
+        farm: farm,
+        inspector: inspector,
+        note: noteEl.value.trim(),
+        modelResult: modelLv || "",
+        modelConfidence: currentData ? Number(currentData.confidence_pct || 0) : null,
+        finalResult: final,
+        finalConfidence: conf,
+        overrideNote: finalNoteEl.value.trim(),
+        edited: edited,
+        detections: (currentData && currentData.detections) || []
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || ("HTTP " + res.status));
+    item = {
+      no: data.no,
+      savedAt: data.saved_at,
+      label: label, farm: farm, inspector: inspector,
+      finalResult: final, finalConfidence: conf,
+      modelResult: modelLv,
+      modelConfidence: currentData ? Number(currentData.confidence_pct || 0) : null,
+      overrideNote: finalNoteEl.value.trim(),
+      edited: edited,
+      reportFile: data.report_file,
+      imageFile: data.image_file,
+      imageDataUrl: currentAnnotated
+    };
+    saveFolderEl.textContent = "โฟลเดอร์รายงาน: " + data.folder;
+    setSaveStatus("บันทึกลำดับที่ " + data.no + " แล้ว (" + fmtDate(data.saved_at) + "): " + data.image_file, "ok");
+    toast("บันทึกผลการตรวจลำดับที่ " + data.no + " เรียบร้อย");
+  } catch (err) {
+    /* บันทึกไฟล์ไม่สำเร็จ — เก็บในตารางของเบราว์เซอร์แทน เพื่อไม่ให้ข้อมูลหาย */
+    const maxNo = Math.max(0, ...history.map(h => Number(h.no) || 0),
+      ...serverRecords.map(r => Number(r.no) || 0));
+    item = {
+      no: maxNo + 1,
+      savedAt: new Date().toISOString(),
+      label: label, farm: farm, inspector: inspector,
+      finalResult: final, finalConfidence: conf,
+      modelResult: modelLv, edited: edited,
+      overrideNote: finalNoteEl.value.trim(),
+      reportFile: null, imageFile: null,
+      imageDataUrl: currentAnnotated
+    };
+    setSaveStatus("บันทึกไฟล์ในเครื่องไม่สำเร็จ: " + err.message +
+      " — เก็บไว้ในตารางของเบราว์เซอร์แทน", "err");
+    toast("บันทึกไฟล์ไม่สำเร็จ: " + err.message, true);
+  }
+
+  history.unshift(item);
+  persistHistory();
+  renderRecordTable(item.savedAt);
+
+  /* เตรียมฟอร์มสำหรับรายการถัดไป */
+  recLabelEl.value = "";
+  farmEl.value = "";
+  recConfEl.value = "";
+  noteEl.value = "";
+  finalNoteEl.value = "";
+  persistForm();
+  recLabelEl.focus();
+});
+
+/* ---------------- ฟอร์ม ---------------- */
+[recLabelEl, farmEl, inspectorEl].forEach(el => el.addEventListener("input", persistForm));
+recResultEl.addEventListener("change", () => {
+  syncConfField();
+  finalLevelEl.value = recResultEl.value;
+  checkOverride();
+  persistForm();
+});
+recClearBtn.addEventListener("click", () => {
+  recLabelEl.value = ""; farmEl.value = ""; inspectorEl.value = "";
+  recConfEl.value = ""; noteEl.value = "";
+  const lv = currentData && currentData.verdict ? currentData.verdict : "Medium";
+  recResultEl.value = lv;
+  finalLevelEl.value = lv;
+  finalNoteEl.value = "";
+  syncConfField();
+  persistForm();
+  toast("ล้างฟอร์มแล้ว");
+  recLabelEl.focus();
+});
+
+/* ---------------- พิมพ์ / บันทึก PDF ---------------- */
+printBtn.addEventListener("click", () => window.print());
+
+/* ---------------- เริ่มต้น ---------------- */
+restoreForm();
+loadHistory();
+syncConfField();
+renderRecordTable();
+loadServerRecords(true);
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "liver-fat-eval",
+  "description": "ระบบประเมินเม็ดไขมันในตับจากภาพถ่าย - กรมประมง",
+  "repository": "",
+  "keywords": [
+    "fisheries",
+    "yolo",
+    "flask",
+    "thai"
+  ],
+  "env": {
+    "LIVER_SECRET": {
+      "description": "รหัสผ่านสำหรับแก้/ลบข้อมูล",
+      "generator": "secret"
+    },
+    "LIVER_HOST": {
+      "description": "0.0.0.0 สำหรับคลาวด์",
+      "value": "0.0.0.0"
+    }
+  }
+}

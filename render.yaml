@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: liver-fat-eval
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python cloud_app.py
+    envVars:
+      - key: LIVER_SECRET
+        generateValue: true

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="ตรากรมประมง (แบบจําลอง)">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f7ec4"/>
+      <stop offset="1" stop-color="#164a7c"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8c66a"/>
+      <stop offset="1" stop-color="#b08b28"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="97" fill="url(#g1)"/>
+  <circle cx="100" cy="100" r="97" fill="none" stroke="url(#g2)" stroke-width="4"/>
+  <circle cx="100" cy="100" r="86" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.5"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="3 6">
+    <circle cx="100" cy="100" r="80"/>
+  </g>
+  <!-- วงกลมในของตรา -->
+  <circle cx="100" cy="100" r="58" fill="#0f3a63" stroke="url(#g2)" stroke-width="2.5"/>
+
+  <!--  fishes -->
+  <g>
+    <path d="M64 102c11-17 33-24 51-14 8 4 14 10 18 17-4 7-10 13-18 17-18 10-40 3-51-14z" fill="#ffffff"/>
+    <path d="M64 102l-14-12v24z" fill="#ffffff"/>
+    <circle cx="118" cy="99" r="3.4" fill="#0f3a63"/>
+    <path d="M96 90c6 8 6 16 0 24" stroke="#0f3a63" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M108 91c5 7 5 15 0 22" stroke="#0f3a63" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
+  </g>
+  <g opacity="0.92">
+    <path d="M136 124c-9-13-27-19-41-11-6 3-11 8-14 13 3 6 8 11 14 13 14 8 32 2 41-11z" fill="#d8ecff"/>
+    <path d="M136 124l11-9v18z" fill="#d8ecff"/>
+    <circle cx="96" cy="126" r="2.8" fill="#0f3a63"/>
+  </g>
+
+  <!--  คลื่นน้ำ -->
+  <path d="M56 148c10-6 20-6 30 0s20 6 30 0 20-6 30 0" fill="none" stroke="#8fd0ff" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M56 158c10-6 20-6 30 0s20 6 30 0 20-6 30 0" fill="none" stroke="#8fd0ff" stroke-opacity="0.7" stroke-width="2.6" stroke-linecap="round"/>
+
+  <!-- ตัวอักษรไทยใต้ตรา -->
+  <text x="100" y="78" text-anchor="middle" font-family="'Sarabun','Noto Sans Thai','Leelawadee UI',Tahoma,sans-serif" font-size="15" font-weight="700" fill="#ffffff" letter-spacing="1">กรมประมง</text>
+  <text x="100" y="140" text-anchor="middle" font-family="'Sarabun','Noto Sans Thai','Leelawadee UI',Tahoma,sans-serif" font-size="7.5" fill="#9fc9ef" letter-spacing="0.6">DEPARTMENT OF FISHERIES</text>
+</svg>

@@ -1,0 +1,7 @@
+# ไฟล์ที่ห้ามขึ้น GitHub — liverV1.pt ต้องขึ้นเว็บด้วย จึงไม่ถูกกันไว้
+runtime/
+exports/*.jpg
+data/*.sqlite-wal
+data/*.sqlite-shm
+.deepseek-studio/
+__pycache__/

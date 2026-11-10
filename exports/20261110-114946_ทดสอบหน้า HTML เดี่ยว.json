@@ -1,0 +1,28 @@
+{
+  "saved_at": "2026-11-10T11:49:46",
+  "center": "ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา",
+  "division": "กรมประมง กระทรวงเกษตรและสหกรณ์",
+  "model": "liverV1.pt",
+  "sample_id": "CC-AQ-TEST",
+  "sample_name": "ทดสอบหน้า HTML เดี่ยว",
+  "inspector": "ผู้ทดสอบระบบ",
+  "note": "ทดสอบ endpoint",
+  "image": "20261110-114946_ทดสอบหน้า HTML เดี่ยว.jpg",
+  "model_result": "Hight",
+  "model_confidence_pct": 88.5,
+  "final_result": "Medium",
+  "final_confidence_pct": null,
+  "edited": true,
+  "detections": [
+    {
+      "level": "Hight",
+      "conf": 0.885,
+      "box": [
+        0,
+        0,
+        1,
+        1
+      ]
+    }
+  ]
+}
