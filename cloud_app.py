@@ -41,22 +41,72 @@ import urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+# ---------------------------------------------------------------- stdout ก่อนทุกอย่าง
+# บนคลาวด์ (Render/Railway) stdout เป็น pipe ที่ไม่ใช่ UTF-8 ถ้าพิมพ์ข้อความไทยก่อน
+# ตั้งค่า encoding จะได้ UnicodeEncodeError แล้วโปรเซสตายทันที (Exited with status 1)
+# จึงต้องตั้งค่า และห่อ print ให้ปลอดภัย *ก่อน* คำสั่งอื่นทั้งหมด
+for _stream in ("stdout", "stderr"):
+    try:
+        getattr(sys, _stream).reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+_raw_print = print
+
+
+def say(*args, **kwargs):
+    """print ที่ไม่ทำให้โปรเซสตายเมื่อคอนโซล/ไพป์เข้ารหัสภาษาไทยไม่ได้"""
+    kwargs.setdefault("flush", True)
+    try:
+        _raw_print(*args, **kwargs)
+    except (UnicodeEncodeError, UnicodeError):
+        try:
+            _raw_print(*[str(a).encode("ascii", "replace").decode("ascii") for a in args], **kwargs)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+print = say   # ให้ print ทุกจุดในไฟล์นี้ปลอดภัย
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 if BASE not in sys.path:
     sys.path.insert(0, BASE)   # ให้ import db / app ได้เสมอ แม้รันจากโฟลเดอร์อื่น
 
 # ที่เก็บข้อมูลจริงบนคลาวด์ (Render Disk) — ถ้าโฮสต์ผูกดิสก์ไว้ที่ /var/data
 # ต้องใช้โฟลเดอร์นั้น ไม่งั้นข้อมูลจะหายเมื่อรีสตาร์ต
-DATA_ROOT = os.environ.get("LIVER_DATA_DIR") or ""
-if not DATA_ROOT:
-    _cand = "/var/data"
-    if os.path.isdir(_cand) and os.access(_cand, os.W_OK):
-        DATA_ROOT = _cand
-if DATA_ROOT:
-    DATA_ROOT = os.path.abspath(DATA_ROOT)
-    os.makedirs(DATA_ROOT, exist_ok=True)
-else:
-    DATA_ROOT = BASE   # ในเครื่องปกติ (ไม่มีดิสก์คลาวด์) ใช้โฟลเดอร์โปรเจกต์เหมือนเดิม
+# ที่เก็บข้อมูลจริงบนคลาวด์ (Render Disk) — ถ้าโฮสต์ผูกดิสก์ไว้ที่ /var/data
+# ต้องใช้โฟลเดอร์นั้น ไม่งั้นข้อมูลจะหายเมื่อรีสตาร์ต
+# สำคัญ: บน Render บางพาธ (เช่น /var/data บน plan ฟรีที่ไม่มีดิสก์) ดูเหมือนมีอยู่
+# และดูเขียนได้ทั้งที่จริงเขียนไม่ได้ (PermissionError) จึงต้องลอง makedirs เอง
+# แล้วตรวจผลจริง ถ้าเขียนไม่ได้ให้ตกกลับมาใช้โฟลเดอร์โปรเจกต์แทน (ข้อมูลไม่หาย)
+def _make_data_root(preferred):
+    if not preferred:
+        return None
+    cand = os.path.abspath(preferred)
+    try:
+        os.makedirs(cand, exist_ok=True)
+        # ทดสอบเขียนลงจริง ไม่ใช่แค่เดา
+        _probe = os.path.join(cand, ".write_probe")
+        with open(_probe, "w", encoding="utf-8") as _f:
+            _f.write("ok")
+        os.remove(_probe)
+        return cand
+    except Exception:
+        try:
+            # ยังพอมีโอกาสเป็นจุดเช็กเขียนไม่ได้แต่โฟลเดอร์ใช้ได้ (เช่น PermissionError
+            # จริงแค่ตอน makedirs) — ลองอีกครั้งแบบเงียบ ก่อนถือว่าใช้ไม่ได้
+            os.makedirs(cand, exist_ok=True)
+            return cand
+        except Exception:
+            return None
+
+
+DATA_ROOT = _make_data_root(os.environ.get("LIVER_DATA_DIR") or "/var/data")
+if DATA_ROOT is None:
+    # เขียน /var/data ไม่ได้ (Render ฟรีไม่มีดิสก์) -> ใช้โฟลเดอร์โปรเจกต์ใน HOME
+    DATA_ROOT = _make_data_root(BASE) or BASE
 
 EXPORT_DIR = os.path.join(DATA_ROOT, "exports")
 ASSET_DIR = os.path.join(BASE, "assets")
@@ -90,7 +140,7 @@ ENGINE_URL = (os.environ.get("LIVER_ENGINE") or "").rstrip("/")
 # รหัสผ่านสำหรับแก้/ลบข้อมูล (ถ้าตั้งไว้ หน้าเว็บจะต้องกรอก)
 SECRET = os.environ.get("LIVER_SECRET") or ""
 
-BUILD_TAG = "2026-11-11-cloud2"
+BUILD_TAG = "2026-11-11-cloud3"
 
 try:
     import db as store
@@ -123,10 +173,7 @@ _lock = threading.Lock()
 def local_lib_ok():
     try:
         import ultralytics  # noqa: F401
-        import torch  # noqa: F401
-        import numpy  # noqa: F401
-        import PIL  # noqa: F401
-        return True, "torch %s / ultralytics %s" % (torch.__version__, ultralytics.__version__)
+        return True, "ultralytics %s" % getattr(ultralytics, "__version__", "?")
     except Exception as e:
         return False, "%s: %s" % (type(e).__name__, e)
 
@@ -152,11 +199,6 @@ def predict_local(img_bytes):
         raise RuntimeError("เซิร์ฟเวอร์นี้ไม่ได้ติดตั้ง torch/ultralytics: " + LIB_NOTE)
     if not os.path.isfile(MODEL_PATH):
         raise RuntimeError("ไม่พบไฟล์แบบจำลอง %s บนเซิร์ฟเวอร์นี้" % os.path.basename(MODEL_PATH))
-    try:
-        import PIL  # noqa: F401
-        import numpy  # noqa: F401
-    except Exception as e:
-        raise RuntimeError("เซิร์ฟเวอร์นี้ไม่มีไลบรารีประมวลผลภาพ (numpy/Pillow): %s" % e)
     with _lock:
         if _local_model is None:
             from ultralytics import YOLO
@@ -528,11 +570,6 @@ class Server(ThreadingHTTPServer):
 
 
 def main():
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
     if STORE_OK:
         try:
             store.init_db()
