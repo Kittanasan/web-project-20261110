@@ -9,9 +9,16 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
-      # ที่เก็บฐานข้อมูล/ภาพแบบถาวร (Render Disk) — ถ้าใช้ดิสก์ต้องเปลี่ยน plan เป็น starter
-      - key: LIVER_DATA_DIR
-        value: /var/data
+      # หมายเหตุเรื่องที่เก็บข้อมูล:
+      # - plan: free ไม่มีดิสก์ถาวร → ฐานข้อมูลอยู่ใน data/ ของโปรเจกต์ (ข้อมูลเริ่มต้น 6 ผลตรวจ 2 ฟาร์ม
+      #   ถูกคัดลอกให้อัตโนมัติ) แต่ข้อมูลที่เพิ่มใหม่จะหายเมื่อ service รีสตาร์ต/ deploy ใหม่
+      # - ถ้าต้องการเก็บถาวร: เปลี่ยน plan เป็น starter แล้วเพิ่ม disk ด้านล่างและเปิด LIVER_DATA_DIR
+      # disk:
+      #   name: liver-data
+      #   mountPath: /var/data
+      #   sizeGB: 1
+      # - key: LIVER_DATA_DIR
+      #   value: /var/data
       - key: LIVER_SECRET
         generateValue: true
       # ที่อยู่เครื่องประมวลผลในศูนย์ (เช่น https://xxx.trycloudflare.com) ใส่ในหน้า Dashboard
