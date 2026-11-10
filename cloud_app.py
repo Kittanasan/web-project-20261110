@@ -229,7 +229,7 @@ def predict_remote(img_bytes):
 
 
 def load_index():
-    for rel in (("Index.html",), ("index.html",), ("templates", "index.html")):
+    for rel in (("templates", "index.html"), ("index.html",), ("Index.html",)):
         p = os.path.join(BASE, *rel)
         if os.path.isfile(p):
             with open(p, "r", encoding="utf-8") as f:
