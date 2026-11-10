@@ -90,7 +90,7 @@ ENGINE_URL = (os.environ.get("LIVER_ENGINE") or "").rstrip("/")
 # รหัสผ่านสำหรับแก้/ลบข้อมูล (ถ้าตั้งไว้ หน้าเว็บจะต้องกรอก)
 SECRET = os.environ.get("LIVER_SECRET") or ""
 
-BUILD_TAG = "2026-11-11-cloud1"
+BUILD_TAG = "2026-11-11-cloud2"
 
 try:
     import db as store

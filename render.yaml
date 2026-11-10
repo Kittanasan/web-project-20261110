@@ -3,24 +3,25 @@ services:
     name: liver-fat-eval
     runtime: python
     plan: free
+    # ใช้ python 3.11.9 จาก runtime.txt เท่านั้น (ห้ามประกาศ PYTHON_VERSION ที่นี่
+    # เพราะ Render จะฟ้องว่า blueprints cannot set PYTHON_VERSION)
     buildCommand: pip install -r requirements.txt
     startCommand: python cloud_app.py
     healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.9
+      # รหัสสำหรับแก้/ลบข้อมูล (Render สร้างค่าให้เอง)
+      - key: LIVER_SECRET
+        generateValue: true
+      # ไม่ต้องประกาศ LIVER_ENGINE ใน blueprint — Render จะถามให้กรอกตอน Apply
+      # ถ้าใส่ sync:false ใน blueprints มักได้ค่า null แล้วแอปจะล้มตอน start
+      # (ใส่ค่าทีหลังได้ที่ Environment ของ service)
+      #
       # หมายเหตุเรื่องที่เก็บข้อมูล:
-      # - plan: free ไม่มีดิสก์ถาวร → ฐานข้อมูลอยู่ใน data/ ของโปรเจกต์ (ข้อมูลเริ่มต้น 6 ผลตรวจ 2 ฟาร์ม
-      #   ถูกคัดลอกให้อัตโนมัติ) แต่ข้อมูลที่เพิ่มใหม่จะหายเมื่อ service รีสตาร์ต/ deploy ใหม่
-      # - ถ้าต้องการเก็บถาวร: เปลี่ยน plan เป็น starter แล้วเพิ่ม disk ด้านล่างและเปิด LIVER_DATA_DIR
+      # - plan: free ไม่มีดิสก์ถาวร → ฐานข้อมูลอยู่ใน data/ ของโปรเจกต์
+      #   (ข้อมูลตั้งต้น 6 ผลตรวจ 2 ฟาร์มถูกคัดลอกให้อัตโนมัติ)
+      #   แต่ข้อมูลที่เพิ่มใหม่จะหายเมื่อ service รีสตาร์ต/ deploy ใหม่
+      # - ต้องการเก็บถาวร: เปลี่ยนเป็น plan: starter + เพิ่ม disk ด้านล่าง
       # disk:
       #   name: liver-data
       #   mountPath: /var/data
       #   sizeGB: 1
-      # - key: LIVER_DATA_DIR
-      #   value: /var/data
-      - key: LIVER_SECRET
-        generateValue: true
-      # ที่อยู่เครื่องประมวลผลในศูนย์ (เช่น https://xxx.trycloudflare.com) ใส่ในหน้า Dashboard
-      - key: LIVER_ENGINE
-        sync: false
