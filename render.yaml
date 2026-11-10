@@ -5,6 +5,15 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python cloud_app.py
+    healthCheckPath: /health
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # ที่เก็บฐานข้อมูล/ภาพแบบถาวร (Render Disk) — ถ้าใช้ดิสก์ต้องเปลี่ยน plan เป็น starter
+      - key: LIVER_DATA_DIR
+        value: /var/data
       - key: LIVER_SECRET
         generateValue: true
+      # ที่อยู่เครื่องประมวลผลในศูนย์ (เช่น https://xxx.trycloudflare.com) ใส่ในหน้า Dashboard
+      - key: LIVER_ENGINE
+        sync: false

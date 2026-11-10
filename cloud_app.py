@@ -27,8 +27,12 @@
 ใช้บนคลาวด์:   gunicorn แทนไม่ได้เพราะเป็น http.server -> ใช้ Procfile:
                web: python cloud_app.py       (Render กำหนดพอร์ตผ่าน env PORT)
 """
+import base64
+import datetime
 import json
 import os
+import re
+import shutil
 import sys
 import threading
 import urllib.error
@@ -40,8 +44,38 @@ from urllib.parse import urlparse, parse_qs
 BASE = os.path.dirname(os.path.abspath(__file__))
 if BASE not in sys.path:
     sys.path.insert(0, BASE)   # ให้ import db / app ได้เสมอ แม้รันจากโฟลเดอร์อื่น
-EXPORT_DIR = os.path.join(BASE, "exports")
+
+# ที่เก็บข้อมูลจริงบนคลาวด์ (Render Disk) — ถ้าโฮสต์ผูกดิสก์ไว้ที่ /var/data
+# ต้องใช้โฟลเดอร์นั้น ไม่งั้นข้อมูลจะหายเมื่อรีสตาร์ต
+DATA_ROOT = os.environ.get("LIVER_DATA_DIR") or ""
+if not DATA_ROOT:
+    _cand = "/var/data"
+    if os.path.isdir(_cand) and os.access(_cand, os.W_OK):
+        DATA_ROOT = _cand
+if DATA_ROOT:
+    DATA_ROOT = os.path.abspath(DATA_ROOT)
+    os.makedirs(DATA_ROOT, exist_ok=True)
+else:
+    DATA_ROOT = BASE   # ในเครื่องปกติ (ไม่มีดิสก์คลาวด์) ใช้โฟลเดอร์โปรเจกต์เหมือนเดิม
+
+EXPORT_DIR = os.path.join(DATA_ROOT, "exports")
 ASSET_DIR = os.path.join(BASE, "assets")
+if DATA_ROOT != BASE:
+    # ย้ายข้อมูลตั้งต้น (ฐานข้อมูล + ภาพผลตรวจ) ขึ้นดิสก์คลาวด์ครั้งแรกเท่านั้น
+    try:
+        _src_db = os.path.join(BASE, "data", "db.sqlite")
+        _dst_db = os.path.join(DATA_ROOT, "data", "db.sqlite")
+        if os.path.isfile(_src_db) and not os.path.isfile(_dst_db):
+            os.makedirs(os.path.dirname(_dst_db), exist_ok=True)
+            shutil.copy2(_src_db, _dst_db)
+            print("[data] คัดลอกฐานข้อมูลตั้งต้นขึ้นดิสก์คลาวด์แล้ว", flush=True)
+        _src_ex = os.path.join(BASE, "exports")
+        if not os.path.isdir(EXPORT_DIR) and os.path.isdir(_src_ex):
+            shutil.copytree(_src_ex, EXPORT_DIR, dirs_exist_ok=True)
+            print("[data] คัดลอกภาพผลตรวจเดิมขึ้นดิสก์คลาวด์แล้ว", flush=True)
+    except Exception as _e:
+        print("[data] คัดลอกข้อมูลตั้งต้นไม่สำเร็จ:", _e, flush=True)
+
 MODEL_PATH = os.path.join(BASE, "liverV1.pt")
 if not os.path.isfile(MODEL_PATH):
     _alt = os.path.join(BASE, "engine", "liverV1.pt")   # แบบจำลองอาจอยู่ในโฟลเดอร์ engine/
@@ -60,8 +94,12 @@ BUILD_TAG = "2026-11-11-cloud1"
 
 try:
     import db as store
+    # บนคลาวด์ (มีดิสก์ /var/data) ต้องเก็บฐานข้อมูลไว้บนดิสก์ ไม่ใช่ในโค้ดที่ deploy
+    if DATA_ROOT != BASE:
+        store.DATA_DIR = os.path.join(DATA_ROOT, "data")
+        store.DB_PATH = os.path.join(store.DATA_DIR, "db.sqlite")
     STORE_OK = True
-    STORE_NOTE = "sqlite %s" % os.path.basename(store.DB_PATH)
+    STORE_NOTE = "sqlite %s" % store.DB_PATH
 except Exception as _e:  # pragma: no cover
     store = None
     STORE_OK = False
@@ -86,6 +124,8 @@ def local_lib_ok():
     try:
         import ultralytics  # noqa: F401
         import torch  # noqa: F401
+        import numpy  # noqa: F401
+        import PIL  # noqa: F401
         return True, "torch %s / ultralytics %s" % (torch.__version__, ultralytics.__version__)
     except Exception as e:
         return False, "%s: %s" % (type(e).__name__, e)
@@ -112,6 +152,11 @@ def predict_local(img_bytes):
         raise RuntimeError("เซิร์ฟเวอร์นี้ไม่ได้ติดตั้ง torch/ultralytics: " + LIB_NOTE)
     if not os.path.isfile(MODEL_PATH):
         raise RuntimeError("ไม่พบไฟล์แบบจำลอง %s บนเซิร์ฟเวอร์นี้" % os.path.basename(MODEL_PATH))
+    try:
+        import PIL  # noqa: F401
+        import numpy  # noqa: F401
+    except Exception as e:
+        raise RuntimeError("เซิร์ฟเวอร์นี้ไม่มีไลบรารีประมวลผลภาพ (numpy/Pillow): %s" % e)
     with _lock:
         if _local_model is None:
             from ultralytics import YOLO
@@ -162,16 +207,126 @@ def inject_config(html):
     return html
 
 
+def _safe_slug(text, fallback="report"):
+    s = re.sub(r'[\\/:*?"<>|\r\n\t]+', "_", str(text or "").strip())
+    s = re.sub(r"\s+", " ", s).strip(" .")
+    return (s or fallback)[:80]
+
+
+def _next_no():
+    top = 0
+    if os.path.isdir(EXPORT_DIR):
+        for name in os.listdir(EXPORT_DIR):
+            if not name.lower().endswith(".json"):
+                continue
+            try:
+                with open(os.path.join(EXPORT_DIR, name), "r", encoding="utf-8") as f:
+                    top = max(top, int(json.load(f).get("no") or 0))
+            except Exception:
+                continue
+    if STORE_OK:
+        try:
+            top = max(top, store.next_no() - 1)
+        except Exception:
+            pass
+    return top + 1
+
+
 def save_report(payload):
-    """บันทึกภาพ + รายงาน และเพิ่มแถวในฐานข้อมูล (ใช้ได้แม้ไม่มีแบบจำลอง)"""
-    if not payload.get("image"):
-        # ไม่มีภาพ (กรอกย้อนหลัง) -> ลงฐานข้อมูลอย่างเดียว
-        if not STORE_OK:
-            raise ValueError("ยังไม่ได้เปิดใช้ฐานข้อมูล: " + STORE_NOTE)
-        return {"ok": True, "record": store.insert_sample(payload), "image_file": "",
-                "report_file": "", "saved_at": payload.get("saved_at") or ""}
-    import app as local_engine  # ใช้ตัวบันทึกไฟล์ชุดเดียวกัน
-    return local_engine.save_record(payload)
+    """บันทึกภาพ + รายงาน และเพิ่มแถวในฐานข้อมูล — ทำงานได้บนคลาวด์
+
+    สำคัญ: ไม่ import app.py ที่นี่ เพราะ app.py ต้องใช้ numpy/PIL และอาจลาก torch
+    ทำให้เซิร์ฟเวอร์คลาวด์ที่ติดตั้งแค่ Python ธรรมดาบันทึกผลไม่ได้
+    """
+    img_b64 = str(payload.get("image") or "").split(",")[-1].strip()
+    no = _next_no()
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    tag = _safe_slug(payload.get("title") or payload.get("sampleId") or "report", "report")
+    saved_at = datetime.datetime.now().isoformat(timespec="seconds")
+    image_file = ""
+    report_file = ""
+
+    if img_b64:
+        try:
+            img_bytes = base64.b64decode(img_b64)
+        except Exception:
+            raise ValueError("ข้อมูลภาพไม่ถูกต้อง")
+        if len(img_bytes) > 30 * 1024 * 1024:
+            raise ValueError("ภาพใหญ่เกิน 30 MB")
+        os.makedirs(EXPORT_DIR, exist_ok=True)
+        base = "%s_%s" % (stamp, tag)
+        with open(os.path.join(EXPORT_DIR, base + ".jpg"), "wb") as f:
+            f.write(img_bytes)
+        fin = payload.get("finalResult") or ""
+        record = {
+            "no": no,
+            "saved_at": saved_at,
+            "center": "ศูนย์วิจัยและพัฒนาการเพาะเลี้ยงสัตว์น้ำชายฝั่งฉะเชิงเทรา",
+            "division": "กรมประมง กระทรวงเกษตรและสหกรณ์",
+            "model": os.path.basename(MODEL_PATH),
+            "sample_id": payload.get("sampleId") or "",
+            "sample_name": payload.get("sampleName") or payload.get("title") or "",
+            "farm": payload.get("farm") or "",
+            "inspector": payload.get("inspector") or "",
+            "note": payload.get("note") or "",
+            "image": base + ".jpg",
+            "model_result": payload.get("modelResult") or "",
+            "model_confidence_pct": payload.get("modelConfidence"),
+            "final_result": fin,
+            "final_confidence_pct": payload.get("finalConfidence"),
+            "edited": bool(payload.get("edited")),
+            "override_note": payload.get("overrideNote") or "",
+            "detections": payload.get("detections") or [],
+            "final_result_text": (LEVEL_INFO.get(fin) or {}).get("title", "") if isinstance(fin, str) else "",
+        }
+        with open(os.path.join(EXPORT_DIR, base + ".json"), "w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False, indent=2)
+        image_file = base + ".jpg"
+        report_file = base + ".json"
+
+    if not STORE_OK:
+        raise ValueError("ยังไม่ได้เปิดใช้ฐานข้อมูล: " + STORE_NOTE)
+    row = store.insert_sample({
+        "no": no,
+        "saved_at": saved_at,
+        "label": payload.get("sampleName") or payload.get("sampleId") or payload.get("title"),
+        "sampleName": payload.get("sampleName") or payload.get("title"),
+        "sampleId": payload.get("sampleId"),
+        "farm": payload.get("farm"),
+        "inspector": payload.get("inspector"),
+        "note": payload.get("note"),
+        "modelResult": payload.get("modelResult"),
+        "modelConfidence": payload.get("modelConfidence"),
+        "finalResult": payload.get("finalResult"),
+        "finalResultText": (LEVEL_INFO.get(payload.get("finalResult")) or {}).get("title", ""),
+        "finalConfidence": payload.get("finalConfidence"),
+        "edited": payload.get("edited"),
+        "overrideNote": payload.get("overrideNote"),
+        "modelFile": os.path.basename(MODEL_PATH),
+        "detections": len(payload.get("detections") or []),
+        "imageFile": image_file,
+        "reportFile": report_file,
+        "client": "cloud",
+    })
+    return {"ok": True, "folder": EXPORT_DIR, "no": row["no"], "label": row["sample_label"],
+            "record": row, "image_file": image_file, "report_file": report_file,
+            "saved_at": saved_at, "db_id": row["id"]}
+
+
+def delete_files(name):
+    """ลบรายงาน .json พร้อมภาพ .jpg ใน exports/ (ใช้ได้บนคลาวด์)"""
+    name = urllib.parse.unquote(str(name or "")).replace("\\", "/")
+    if not name or "/" in name or ".." in name or not name.lower().endswith(".json"):
+        raise ValueError("ชื่อไฟล์ไม่ถูกต้อง (ต้องเป็นไฟล์รายงาน .json)")
+    full = os.path.abspath(os.path.join(EXPORT_DIR, name))
+    if not full.startswith(os.path.abspath(EXPORT_DIR) + os.sep):
+        raise ValueError("ชื่อไฟล์ไม่ถูกต้อง")
+    removed = []
+    for p in (full, os.path.splitext(full)[0] + ".jpg"):
+        if os.path.isfile(p):
+            os.remove(p)
+            removed.append(os.path.basename(p))
+    return {"ok": True, "removed": removed}
 
 
 # --------------------------------------------------------------------------
@@ -263,6 +418,8 @@ class Handler(BaseHTTPRequestHandler):
                 "store": "sqlite",
                 "store_note": STORE_NOTE,
                 "db_path": store.DB_PATH if STORE_OK else "",
+                "data_dir": DATA_ROOT,
+                "persistent": DATA_ROOT != BASE,
                 "db_records": (store.stats()["total"] if STORE_OK else None),
                 "need_secret": bool(SECRET),
             })
@@ -340,15 +497,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not n:
                     raise ValueError("ไม่พบรายการที่ต้องการลบ")
                 if data.get("report_file"):
-                    import app as local_engine
                     try:
-                        local_engine.delete_record(data["report_file"])
+                        delete_files(data["report_file"])
                     except Exception:
                         pass
                 return self._json({"ok": True, "removed": n})
             if path == "/delete":
-                import app as local_engine
-                return self._json(local_engine.delete_record(data.get("name")))
+                return self._json(delete_files(data.get("name")))
             if path == "/farmers":
                 if not STORE_OK:
                     raise ValueError("ยังไม่ได้เปิดใช้ฐานข้อมูล: " + STORE_NOTE)
